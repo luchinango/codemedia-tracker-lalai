@@ -28,7 +28,7 @@ interface ProjectCardProps {
   taskCounts?: TaskCounts;
 }
 
-export function ProjectCard({ project, companyName, paymentMethod, responsibleName, taskCounts }: ProjectCardProps) {
+export function ProjectCard({ project, companyName, responsibleName, taskCounts }: ProjectCardProps) {
   const [toggling, setToggling] = useState(false);
   const currency = project.currency ?? "USD";
   const symbol = currency === "BOB" ? "Bs" : "$";

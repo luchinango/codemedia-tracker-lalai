@@ -79,6 +79,50 @@ export async function pauseTimer(issueId: string, userId: string) {
 }
 
 /**
+ * Finish an issue: stop the timer AND mark the issue as "done".
+ */
+export async function finishTimer(issueId: string, userId: string) {
+  const openLog = await getOpenTimeLog(issueId, userId);
+  if (!openLog) {
+    return { error: "No se encontró un registro de tiempo abierto" };
+  }
+
+  try {
+    const { durationMinutes, durationSeconds } = await closeTimeLog(openLog.id, openLog.start_time);
+
+    // Mark issue as done
+    await updateIssueStatus(issueId, "done");
+
+    const user = await getUserById(userId);
+    const hourlyRate = user?.hourly_rate ?? 0;
+    const sessionCost = (durationSeconds / 3600) * hourlyRate;
+    console.log(
+      `[AUDIT] Timer finished — Issue: ${issueId} | User: ${userId} | Duration: ${durationMinutes}min (${durationSeconds}s) | Rate: $${hourlyRate}/hr | Session Cost: $${sessionCost.toFixed(2)}`
+    );
+
+    // Send completion notification
+    const result = await getIssueWithProject(issueId);
+    if (result?.project) {
+      await sendStatusNotification({
+        clientEmail: result.project.client_email,
+        projectId: result.project.id,
+        projectName: result.project.name,
+        issueId,
+        issueTitle: result.issue.title,
+        newStatus: "done",
+      });
+    }
+
+    revalidatePath("/kanban");
+    revalidatePath("/projects");
+    revalidatePath("/");
+    return { success: true, durationMinutes, durationSeconds, sessionCost };
+  } catch {
+    return { error: "Error al finalizar la tarea" };
+  }
+}
+
+/**
  * Mark an issue as done:
  * - Pauses any running timer first
  * - Changes status to 'done'

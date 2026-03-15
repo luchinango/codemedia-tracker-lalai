@@ -1,7 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { Target, Clock, Bell, TrendingUp } from "lucide-react";
 import { getUsdToBob } from "@/lib/exchange-rate";
-import { fmtBs, fmtNum } from "@/lib/format";
+import { fmtBs } from "@/lib/format";
 import { CollapsibleSection } from "@/components/ui/collapsible-section";
 
 export const dynamic = "force-dynamic";

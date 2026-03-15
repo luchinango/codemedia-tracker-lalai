@@ -1,9 +1,9 @@
 "use client";
 
 import { useState, useEffect, useSyncExternalStore } from "react";
-import { Clock, Pause, Minimize2, Maximize2 } from "lucide-react";
+import { Clock, Pause, Minimize2, Maximize2, CheckCircle } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
-import { pauseTimer } from "@/app/actions/timer";
+import { pauseTimer, finishTimer } from "@/app/actions/timer";
 
 interface ActiveTimer {
   id: string;
@@ -37,6 +37,7 @@ export function GlobalTimer() {
   const [timers, setTimers] = useState<ActiveTimer[]>([]);
   const [minimized, setMinimized] = useState(false);
   const [pausing, setPausing] = useState<string | null>(null);
+  const [finishing, setFinishing] = useState<string | null>(null);
 
   const nowSec = useSyncExternalStore(subscribeToTick, getTickSnapshot, getServerSnapshot);
 
@@ -101,6 +102,13 @@ export function GlobalTimer() {
     await pauseTimer(timer.issue_id, timer.user_id);
     setTimers((prev) => prev.filter((t) => t.id !== timer.id));
     setPausing(null);
+  }
+
+  async function handleFinish(timer: ActiveTimer) {
+    setFinishing(timer.id);
+    await finishTimer(timer.issue_id, timer.user_id);
+    setTimers((prev) => prev.filter((t) => t.id !== timer.id));
+    setFinishing(null);
   }
 
   if (timers.length === 0) return null;
@@ -174,10 +182,18 @@ export function GlobalTimer() {
                   </p>
                 </div>
               </div>
-              <div className="mt-2 flex justify-end">
+              <div className="mt-2 flex justify-end gap-2">
+                <button
+                  onClick={() => handleFinish(timer)}
+                  disabled={finishing === timer.id || pausing === timer.id}
+                  className="flex items-center gap-1 text-xs px-2.5 py-1 rounded-lg bg-success/10 text-success hover:bg-success/20 transition disabled:opacity-50"
+                >
+                  <CheckCircle size={12} />
+                  Finalizar
+                </button>
                 <button
                   onClick={() => handlePause(timer)}
-                  disabled={pausing === timer.id}
+                  disabled={pausing === timer.id || finishing === timer.id}
                   className="flex items-center gap-1 text-xs px-2.5 py-1 rounded-lg bg-warning/10 text-warning hover:bg-warning/20 transition disabled:opacity-50"
                 >
                   <Pause size={12} />
