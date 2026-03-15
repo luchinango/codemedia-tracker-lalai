@@ -52,11 +52,21 @@ export async function middleware(request: NextRequest) {
   }
 
   // Fetch the user's role from our users table
-  const { data: appUser } = await supabase
+  let { data: appUser } = await supabase
     .from("users")
     .select("role")
     .eq("auth_id", user.id)
     .single();
+
+  // Fallback: match by email if auth_id not linked yet
+  if (!appUser && user.email) {
+    const { data: byEmail } = await supabase
+      .from("users")
+      .select("role")
+      .eq("email", user.email)
+      .single();
+    appUser = byEmail;
+  }
 
   const role = appUser?.role ?? "dev";
 

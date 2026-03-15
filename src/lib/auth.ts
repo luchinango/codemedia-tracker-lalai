@@ -21,11 +21,29 @@ export async function getAppUser(): Promise<AppUser | null> {
 
   if (!user) return null;
 
-  const { data: appUser } = await supabase
+  // Try by auth_id first
+  let { data: appUser } = await supabase
     .from("users")
     .select("id, name, email, role")
     .eq("auth_id", user.id)
     .single();
+
+  // Fallback: match by email and auto-link auth_id
+  if (!appUser && user.email) {
+    const { data: byEmail } = await supabase
+      .from("users")
+      .select("id, name, email, role")
+      .eq("email", user.email)
+      .single();
+
+    if (byEmail) {
+      await supabase
+        .from("users")
+        .update({ auth_id: user.id })
+        .eq("id", byEmail.id);
+      appUser = byEmail;
+    }
+  }
 
   if (!appUser) return null;
 
