@@ -1,0 +1,156 @@
+"use client";
+
+import { useState } from "react";
+import { Pencil, Trash2, X, Check } from "lucide-react";
+import { updateCompany, deleteCompany } from "@/app/actions/crud";
+
+interface Company {
+  id: string;
+  name: string;
+  tax_id: string | null;
+  payment_method: string;
+  billing_details: string | null;
+  notification_email: string | null;
+  created_at: string;
+}
+
+export function CompanyRow({ company, lastPaymentDate }: { company: Company; lastPaymentDate: string | null }) {
+  const [editing, setEditing] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [name, setName] = useState(company.name);
+  const [taxId, setTaxId] = useState(company.tax_id ?? "");
+  const [paymentMethod, setPaymentMethod] = useState(company.payment_method);
+  const [billingDetails, setBillingDetails] = useState(company.billing_details ?? "");
+  const [notificationEmail, setNotificationEmail] = useState(company.notification_email ?? "");
+
+  async function handleSave() {
+    setLoading(true);
+    const formData = new FormData();
+    formData.set("id", company.id);
+    formData.set("name", name);
+    formData.set("tax_id", taxId);
+    formData.set("payment_method", paymentMethod);
+    formData.set("billing_details", billingDetails);
+    formData.set("notification_email", notificationEmail);
+    await updateCompany(formData);
+    setLoading(false);
+    setEditing(false);
+  }
+
+  function handleCancel() {
+    setName(company.name);
+    setTaxId(company.tax_id ?? "");
+    setPaymentMethod(company.payment_method);
+    setBillingDetails(company.billing_details ?? "");
+    setNotificationEmail(company.notification_email ?? "");
+    setEditing(false);
+  }
+
+  async function handleDelete() {
+    if (!confirm(`¿Eliminar "${company.name}"?`)) return;
+    setLoading(true);
+    await deleteCompany(company.id);
+    setLoading(false);
+  }
+
+  if (editing) {
+    return (
+      <tr className="border-b border-border last:border-0 bg-primary/5">
+        <td className="px-5 py-2">
+          <input
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            className="w-full px-2 py-1 rounded border border-border bg-background text-foreground text-sm focus:outline-none focus:ring-1 focus:ring-primary/50"
+          />
+        </td>
+        <td className="px-5 py-2">
+          <input
+            value={taxId}
+            onChange={(e) => setTaxId(e.target.value)}
+            className="w-full px-2 py-1 rounded border border-border bg-background text-foreground text-sm focus:outline-none focus:ring-1 focus:ring-primary/50"
+          />
+        </td>
+        <td className="px-5 py-2">
+          <select
+            value={paymentMethod}
+            onChange={(e) => setPaymentMethod(e.target.value)}
+            className="w-full px-2 py-1 rounded border border-border bg-background text-foreground text-sm focus:outline-none focus:ring-1 focus:ring-primary/50"
+          >
+            <option value="Transferencia">Transferencia</option>
+            <option value="PayPal">PayPal</option>
+            <option value="Efectivo">Efectivo</option>
+            <option value="Crypto">Crypto</option>
+          </select>
+        </td>
+        <td className="px-5 py-2">
+          <input
+            value={notificationEmail}
+            onChange={(e) => setNotificationEmail(e.target.value)}
+            placeholder="email@ejemplo.com"
+            type="email"
+            className="w-full px-2 py-1 rounded border border-border bg-background text-foreground text-sm focus:outline-none focus:ring-1 focus:ring-primary/50"
+          />
+        </td>
+        <td className="px-5 py-2 text-muted-foreground text-xs">—</td>
+        <td className="px-5 py-2 text-right">
+          <div className="flex items-center justify-end gap-1">
+            <button
+              onClick={handleSave}
+              disabled={loading}
+              className="p-1 rounded hover:bg-success/20 text-success transition disabled:opacity-50"
+              title="Guardar"
+            >
+              <Check size={14} />
+            </button>
+            <button
+              onClick={handleCancel}
+              className="p-1 rounded hover:bg-danger/20 text-danger transition"
+              title="Cancelar"
+            >
+              <X size={14} />
+            </button>
+          </div>
+        </td>
+      </tr>
+    );
+  }
+
+  return (
+    <tr className="border-b border-border last:border-0 hover:bg-muted/50">
+      <td className="px-5 py-3 text-foreground font-medium">{company.name}</td>
+      <td className="px-5 py-3 text-muted-foreground">{company.tax_id ?? "—"}</td>
+      <td className="px-5 py-3">
+        <span className="text-xs px-2 py-1 rounded-full bg-primary/10 text-primary font-medium">
+          {company.payment_method}
+        </span>
+      </td>
+      <td className="px-5 py-3 text-muted-foreground text-xs">
+        {company.notification_email ?? <span className="text-warning">Sin email</span>}
+      </td>
+      <td className="px-5 py-3 text-muted-foreground text-sm">
+        {lastPaymentDate
+          ? new Date(lastPaymentDate).toLocaleDateString("es-BO")
+          : <span className="text-xs text-warning">Sin pagos</span>}
+      </td>
+      <td className="px-5 py-3 text-right">
+        <div className="flex items-center justify-end gap-1">
+          <button
+            onClick={() => setEditing(true)}
+            className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition"
+            title="Editar"
+          >
+            <Pencil size={13} />
+          </button>
+          <button
+            onClick={handleDelete}
+            disabled={loading}
+            className="p-1 rounded hover:bg-danger/10 text-muted-foreground hover:text-danger transition disabled:opacity-50"
+            title="Eliminar"
+          >
+            <Trash2 size={13} />
+          </button>
+        </div>
+      </td>
+    </tr>
+  );
+}

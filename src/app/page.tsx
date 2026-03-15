@@ -1,65 +1,114 @@
-import Image from "next/image";
+import { createClient } from "@/lib/supabase/server";
+import { FolderOpen } from "lucide-react";
+import { CreateProjectForm } from "@/components/forms/create-project-form";
+import { CreateUserForm } from "@/components/forms/create-user-form";
+import { CompanyForm } from "@/components/forms/CompanyForm";
+import { ProjectCard } from "@/components/project-card";
+import { ProjectsFilter } from "@/components/projects-filter";
 
-export default function Home() {
+export const dynamic = "force-dynamic";
+
+interface PageProps {
+  searchParams: Promise<{ status?: string }>;
+}
+
+export default async function ProjectsPage({ searchParams }: PageProps) {
+  const { status: filterStatus } = await searchParams;
+  const showCompleted = filterStatus === "completed";
+
+  const supabase = await createClient();
+  const [{ data: projects }, { data: users }, { data: companies }] = await Promise.all([
+    supabase.from("projects").select("*, companies:company_id(name, payment_method), responsible:responsible_id(id, name)").order("created_at", { ascending: false }),
+    supabase.from("users").select("id, name, role").eq("role", "dev"),
+    supabase.from("companies").select("id, name").order("name"),
+  ]);
+
+  const allProjects = projects ?? [];
+
+  // Fetch task counts for all projects
+  const { data: issues } = await supabase
+    .from("issues")
+    .select("project_id, status");
+
+  const taskCountMap = new Map<string, { todo: number; in_progress: number; done: number }>();
+  for (const issue of issues ?? []) {
+    const pid = issue.project_id;
+    const counts = taskCountMap.get(pid) ?? { todo: 0, in_progress: 0, done: 0 };
+    if (issue.status === "done") counts.done++;
+    else if (issue.status === "in_progress") counts.in_progress++;
+    else counts.todo++;
+    taskCountMap.set(pid, counts);
+  }
+
+  const filteredProjects = allProjects.filter((p) =>
+    showCompleted ? p.status === "completed" : p.status !== "completed"
+  );
+
+  const activeCount = allProjects.filter((p) => p.status !== "completed").length;
+  const completedCount = allProjects.filter((p) => p.status === "completed").length;
+
+  const devs = (users ?? []).map((u) => ({ id: u.id, name: u.name }));
+  const hasDevs = devs.length > 0;
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
+    <div>
+      <div className="flex items-center justify-between mb-6">
+        <h1 className="text-2xl font-bold text-foreground">Proyectos</h1>
+        <div className="flex items-center gap-3">
+          <CompanyForm />
+          <CreateUserForm />
+          <CreateProjectForm companies={companies ?? []} devs={devs} />
+        </div>
+      </div>
+
+      {!hasDevs && (
+        <div className="border border-warning/50 bg-warning/10 rounded-xl p-4 mb-6">
+          <p className="text-sm text-foreground font-medium">⚠️ No hay desarrolladores registrados</p>
+          <p className="text-xs text-muted-foreground mt-1">
+            Agrega al menos un desarrollador para poder usar el timer en las tareas.
           </p>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+      )}
+
+      {/* Status filter tabs */}
+      <ProjectsFilter
+        activeCount={activeCount}
+        completedCount={completedCount}
+        showCompleted={showCompleted}
+      />
+
+      {filteredProjects.length === 0 ? (
+        <div className="text-center py-16 text-muted-foreground">
+          <FolderOpen size={48} className="mx-auto mb-4 opacity-50" />
+          <p>{showCompleted ? "No hay proyectos terminados." : "No hay proyectos aún."}</p>
+          {!showCompleted && (
+            <p className="text-sm mt-1">
+              Haz clic en &ldquo;Nuevo Proyecto&rdquo; para comenzar.
+            </p>
+          )}
         </div>
-      </main>
+      ) : (
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {filteredProjects.map((project) => {
+            const comp = (project as unknown as { companies: { name: string; payment_method: string } | null }).companies;
+            const resp = (project as unknown as { responsible: { id: string; name: string } | null }).responsible;
+            return (
+              <ProjectCard
+                key={project.id}
+                project={{
+                  ...project,
+                  currency: (project as Record<string, unknown>).currency as string | undefined,
+                  project_code: (project as Record<string, unknown>).project_code as string | undefined,
+                }}
+                companyName={comp?.name}
+                paymentMethod={comp?.payment_method}
+                responsibleName={resp?.name}
+                taskCounts={taskCountMap.get(project.id)}
+              />
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
