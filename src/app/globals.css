@@ -44,3 +44,50 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+/* Print styles — clean A4 layout */
+@media print {
+  body {
+    background: white !important;
+    color: black !important;
+    font-size: 12px;
+  }
+
+  .print\:hidden {
+    display: none !important;
+  }
+
+  aside,
+  .fixed {
+    display: none !important;
+  }
+
+  main {
+    padding: 0 !important;
+    overflow: visible !important;
+  }
+
+  header {
+    border: none !important;
+  }
+
+  section {
+    break-inside: avoid;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+  th,
+  td {
+    border-bottom: 1px solid #e5e7eb;
+    padding: 6px 8px;
+  }
+
+  @page {
+    size: A4;
+    margin: 1.5cm;
+  }
+}

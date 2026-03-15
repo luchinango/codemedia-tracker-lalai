@@ -4,6 +4,8 @@ import "./globals.css";
 import { Sidebar } from "@/components/sidebar";
 import { WellnessAlerts } from "@/components/wellness-alerts";
 import { GlobalTimer } from "@/components/global-timer";
+import { getAppUser } from "@/lib/auth";
+import { headers } from "next/headers";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -20,24 +22,35 @@ export const metadata: Metadata = {
   description: "Gestión de proyectos, control de horas y cálculo de costos",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const headersList = await headers();
+  const pathname = headersList.get("x-pathname") ?? "";
+  const isPublicRoute =
+    pathname.startsWith("/login") || pathname.startsWith("/share/");
+
+  const appUser = isPublicRoute ? null : await getAppUser();
+
   return (
     <html lang="es">
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        <div className="flex h-screen">
-          <Sidebar />
-          <main className="flex-1 overflow-y-auto bg-background p-6">
-            {children}
-          </main>
-          <WellnessAlerts />
-          <GlobalTimer />
-        </div>
+        {isPublicRoute ? (
+          <>{children}</>
+        ) : (
+          <div className="flex h-screen">
+            <Sidebar role={appUser?.role ?? "dev"} userName={appUser?.name ?? ""} />
+            <main className="flex-1 overflow-y-auto bg-background p-6">
+              {children}
+            </main>
+            <WellnessAlerts />
+            <GlobalTimer />
+          </div>
+        )}
       </body>
     </html>
   );
