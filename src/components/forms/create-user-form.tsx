@@ -88,7 +88,35 @@ export function CreateUserForm() {
           />
         </div>
 
-        <input type="hidden" name="role" value="dev" />
+        <div>
+          <label className="block text-xs font-medium text-muted-foreground mb-1">
+            Rol
+          </label>
+          <select
+            name="role"
+            defaultValue="dev"
+            className="w-full px-3 py-2 rounded-lg border border-border bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
+          >
+            <option value="dev">Desarrollador</option>
+            <option value="admin">Administrador</option>
+          </select>
+        </div>
+
+        <div>
+          <label className="block text-xs font-medium text-muted-foreground mb-1">
+            Contraseña (acceso al sistema)
+          </label>
+          <input
+            name="password"
+            type="password"
+            minLength={6}
+            placeholder="Mínimo 6 caracteres"
+            className="w-full px-3 py-2 rounded-lg border border-border bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
+          />
+          <p className="text-xs text-muted-foreground mt-1">
+            Si se llena, se crea cuenta de acceso automáticamente.
+          </p>
+        </div>
 
         <div>
           <label className="block text-xs font-medium text-muted-foreground mb-1">

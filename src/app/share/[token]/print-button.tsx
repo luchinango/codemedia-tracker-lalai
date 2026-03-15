@@ -2,6 +2,7 @@
 
 import { Printer } from "lucide-react";
 
+
 export function SharePrintButton() {
   return (
     <button

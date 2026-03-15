@@ -115,6 +115,7 @@ export async function createIssue(formData: FormData) {
 export async function upsertUser(formData: FormData) {
   const name = formData.get("name") as string;
   const email = formData.get("email") as string;
+  const password = (formData.get("password") as string) || "";
   const role = (formData.get("role") as string) || "dev";
   const phone = (formData.get("phone") as string) || null;
   const pretensionStr = formData.get("pretension_salarial") as string;
@@ -133,6 +134,31 @@ export async function upsertUser(formData: FormData) {
 
   const supabase = await createClient();
 
+  // Create Supabase Auth account if password provided
+  let authId: string | null = null;
+  if (password.length >= 6) {
+    const { createAdminClient } = await import("@/lib/supabase/admin");
+    const admin = createAdminClient();
+    const { data: authUser, error: authError } =
+      await admin.auth.admin.createUser({
+        email,
+        password,
+        email_confirm: true,
+      });
+    if (authError) {
+      // If user already exists in auth, try to find their id
+      if (authError.message.includes("already been registered")) {
+        const { data: list } = await admin.auth.admin.listUsers();
+        const existing = list?.users?.find((u) => u.email === email);
+        if (existing) authId = existing.id;
+      } else {
+        return { error: `Error al crear cuenta: ${authError.message}` };
+      }
+    } else {
+      authId = authUser.user.id;
+    }
+  }
+
   const userPayload: Record<string, unknown> = {
     name,
     email,
@@ -145,6 +171,9 @@ export async function upsertUser(formData: FormData) {
   if (pretension !== null) {
     userPayload.pretension_salarial = pretension;
     userPayload.salary_expectation_bob = pretension;
+  }
+  if (authId) {
+    userPayload.auth_id = authId;
   }
 
   const { error } = await supabase.from("users").upsert(

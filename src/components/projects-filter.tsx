@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 
+
 interface ProjectsFilterProps {
   activeCount: number;
   completedCount: number;
