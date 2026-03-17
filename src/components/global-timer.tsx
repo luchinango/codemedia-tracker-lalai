@@ -28,9 +28,10 @@ function getServerSnapshot() {
 }
 
 function formatHHMMSS(totalSeconds: number): string {
-  const h = Math.floor(totalSeconds / 3600);
-  const m = Math.floor((totalSeconds % 3600) / 60);
-  const s = totalSeconds % 60;
+  const safe = Number.isFinite(totalSeconds) ? totalSeconds : 0;
+  const h = Math.floor(safe / 3600);
+  const m = Math.floor((safe % 3600) / 60);
+  const s = Math.floor(safe % 60);
   return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
 }
 
@@ -78,7 +79,8 @@ export function GlobalTimer() {
       // Sum closed duration per issue
       const accumulatedMap = new Map<string, number>();
       for (const cl of closedLogs ?? []) {
-        accumulatedMap.set(cl.issue_id, (accumulatedMap.get(cl.issue_id) ?? 0) + (cl.duration_minutes ?? 0));
+        const mins = Number(cl.duration_minutes) || 0;
+        accumulatedMap.set(cl.issue_id, (accumulatedMap.get(cl.issue_id) ?? 0) + mins);
       }
 
       const issueMap = new Map(
@@ -137,7 +139,7 @@ export function GlobalTimer() {
           <Clock size={18} />
           <span className="font-mono text-lg font-bold">
             {formatHHMMSS(
-              timers[0].accumulated_seconds + Math.max(
+              (timers[0].accumulated_seconds || 0) + Math.max(
                 0,
                 nowSec - Math.floor(new Date(timers[0].start_time).getTime() / 1000)
               )
@@ -178,7 +180,7 @@ export function GlobalTimer() {
         {timers.map((timer) => {
           const startSec = Math.floor(new Date(timer.start_time).getTime() / 1000);
           const currentSession = Math.max(0, nowSec - startSec);
-          const totalElapsed = timer.accumulated_seconds + currentSession;
+          const totalElapsed = (timer.accumulated_seconds || 0) + currentSession;
           return (
             <div key={timer.id} className="px-4 py-3">
               <div className="flex items-start justify-between gap-2">
