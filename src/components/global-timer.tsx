@@ -58,38 +58,32 @@ export function GlobalTimer() {
         return;
       }
 
-      // Fetch issue + project names
+      // Fetch issues WITH nested time_logs (same join pattern as kanban)
       const issueIds = [...new Set(logs.map((l) => l.issue_id))];
       const userIds = [...new Set(logs.map((l) => l.user_id))];
 
-      const [{ data: issues }, { data: users }, { data: allLogs }] = await Promise.all([
+      const [{ data: issues }, { data: users }] = await Promise.all([
         supabase
           .from("issues")
-          .select("id, title, project_id, projects:project_id(name)")
+          .select("id, title, project_id, projects:project_id(name), time_logs(duration_minutes)")
           .in("id", issueIds),
         supabase.from("users").select("id, name").in("id", userIds),
-        // Fetch ALL time_logs for these issues to sum closed session durations
-        supabase
-          .from("time_logs")
-          .select("issue_id, duration_minutes")
-          .in("issue_id", issueIds),
       ]);
 
-      // Sum duration_minutes per issue (null for open logs defaults to 0)
-      const accumulatedMap = new Map<string, number>();
-      for (const tl of allLogs ?? []) {
-        const mins = Number(tl.duration_minutes) || 0;
-        accumulatedMap.set(tl.issue_id, (accumulatedMap.get(tl.issue_id) ?? 0) + mins);
-      }
-
+      // Sum duration_minutes per issue from nested time_logs
       const issueMap = new Map(
-        (issues ?? []).map((i) => [
-          i.id,
-          {
-            title: i.title,
-            project_name: (i.projects as unknown as { name: string })?.name ?? "—",
-          },
-        ])
+        (issues ?? []).map((i) => {
+          const timeLogs = (i as unknown as { time_logs: { duration_minutes: number | null }[] }).time_logs ?? [];
+          const totalMinutes = timeLogs.reduce((acc, tl) => acc + (Number(tl.duration_minutes) || 0), 0);
+          return [
+            i.id,
+            {
+              title: i.title,
+              project_name: (i.projects as unknown as { name: string })?.name ?? "—",
+              accumulated_seconds: totalMinutes * 60,
+            },
+          ];
+        })
       );
       const userMap = new Map((users ?? []).map((u) => [u.id, u.name]));
 
@@ -102,7 +96,7 @@ export function GlobalTimer() {
           issue_title: issueMap.get(l.issue_id)?.title ?? "—",
           project_name: issueMap.get(l.issue_id)?.project_name ?? "—",
           user_name: userMap.get(l.user_id) ?? "—",
-          accumulated_seconds: (accumulatedMap.get(l.issue_id) ?? 0) * 60,
+          accumulated_seconds: issueMap.get(l.issue_id)?.accumulated_seconds ?? 0,
         }))
       );
     }
