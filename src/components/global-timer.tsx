@@ -62,25 +62,24 @@ export function GlobalTimer() {
       const issueIds = [...new Set(logs.map((l) => l.issue_id))];
       const userIds = [...new Set(logs.map((l) => l.user_id))];
 
-      const [{ data: issues }, { data: users }, { data: closedLogs }] = await Promise.all([
+      const [{ data: issues }, { data: users }, { data: allLogs }] = await Promise.all([
         supabase
           .from("issues")
           .select("id, title, project_id, projects:project_id(name)")
           .in("id", issueIds),
         supabase.from("users").select("id, name").in("id", userIds),
-        // Fetch closed time_logs to compute accumulated time per issue
+        // Fetch ALL time_logs for these issues to sum closed session durations
         supabase
           .from("time_logs")
           .select("issue_id, duration_minutes")
-          .in("issue_id", issueIds)
-          .not("end_time", "is", null),
+          .in("issue_id", issueIds),
       ]);
 
-      // Sum closed duration per issue
+      // Sum duration_minutes per issue (null for open logs defaults to 0)
       const accumulatedMap = new Map<string, number>();
-      for (const cl of closedLogs ?? []) {
-        const mins = Number(cl.duration_minutes) || 0;
-        accumulatedMap.set(cl.issue_id, (accumulatedMap.get(cl.issue_id) ?? 0) + mins);
+      for (const tl of allLogs ?? []) {
+        const mins = Number(tl.duration_minutes) || 0;
+        accumulatedMap.set(tl.issue_id, (accumulatedMap.get(tl.issue_id) ?? 0) + mins);
       }
 
       const issueMap = new Map(
