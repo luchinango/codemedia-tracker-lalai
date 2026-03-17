@@ -577,8 +577,6 @@ export async function updateProject(formData: FormData) {
   const name = formData.get("name") as string;
   const companyId = (formData.get("company_id") as string) || null;
   const currency = (formData.get("currency") as string) || "USD";
-  const billingType = (formData.get("billing_type") as string) || "fixed";
-  const responsibleId = (formData.get("responsible_id") as string) || null;
   const quotedPrice = parseFloat(formData.get("quoted_price") as string) || 0;
 
   if (!id || !name) return { error: "ID y nombre son requeridos" };
