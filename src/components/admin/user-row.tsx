@@ -1,8 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { Mail, Phone, DollarSign, Pencil, X, Check, CheckCircle, Clock } from "lucide-react";
-import { upsertUser } from "@/app/actions/crud";
+import { Mail, Phone, Pencil, X, Check, CheckCircle, Clock, KeyRound, Trash2 } from "lucide-react";
+import { upsertUser, setUserPassword, deleteUser } from "@/app/actions/crud";
+import { ConfirmModal } from "@/components/ui/confirm-modal";
+import { PasswordInput } from "@/components/ui/password-input";
 
 interface TaskSummary {
   total: number;
@@ -33,10 +35,31 @@ export function UserRow({ user, taskSummary }: UserRowProps) {
   const [pretension, setPretension] = useState(
     user.pretension_salarial != null ? String(user.pretension_salarial) : ""
   );
+  const [showPassword, setShowPassword] = useState(false);
+  const [password, setPassword] = useState("");
+  const [pwLoading, setPwLoading] = useState(false);
+  const [pwMsg, setPwMsg] = useState<{ text: string; ok: boolean } | null>(null);
 
   const computedRate = pretension ? (parseFloat(pretension) / 160).toFixed(2) : String(user.hourly_rate);
 
   const cleanPhone = (user.phone ?? "").replace(/\D/g, "");
+
+  async function handleSetPassword() {
+    setPwLoading(true);
+    setPwMsg(null);
+    const result = await setUserPassword(user.email, password);
+    setPwLoading(false);
+    if (result.error) {
+      setPwMsg({ text: result.error, ok: false });
+    } else {
+      setPwMsg({ text: result.message ?? "Listo", ok: true });
+      setPassword("");
+      setTimeout(() => {
+        setShowPassword(false);
+        setPwMsg(null);
+      }, 2000);
+    }
+  }
 
   async function handleSave() {
     setLoading(true);
@@ -102,7 +125,7 @@ export function UserRow({ user, taskSummary }: UserRowProps) {
               className="w-32 px-2 py-1 rounded border border-border bg-background text-foreground text-sm text-right focus:outline-none focus:ring-1 focus:ring-primary/50"
             />
             <p className="text-[10px] text-muted-foreground mt-0.5 text-right">
-              Tarifa: ${computedRate}/hr
+              Tarifa: Bs{computedRate}/hr
             </p>
           </div>
         </td>
@@ -130,6 +153,7 @@ export function UserRow({ user, taskSummary }: UserRowProps) {
   }
 
   return (
+    <>
     <tr className="border-b border-border last:border-0 hover:bg-muted/50">
       <td className="px-5 py-3 text-foreground font-medium">{user.name}</td>
       <td className="px-5 py-3">
@@ -174,25 +198,85 @@ export function UserRow({ user, taskSummary }: UserRowProps) {
       <td className="px-5 py-3 text-right">
         <div>
           <span className="flex items-center justify-end gap-1 text-foreground font-medium">
-            <DollarSign size={13} />
-            {Number(user.hourly_rate).toFixed(2)}/hr
+            Bs{Number(user.hourly_rate).toFixed(2)}/hr
           </span>
           {user.pretension_salarial != null && (
             <span className="text-[10px] text-muted-foreground">
-              Pretensión: ${Number(user.pretension_salarial).toLocaleString()}
+              Pretensión: Bs{Number(user.pretension_salarial).toLocaleString()}/mes
             </span>
           )}
         </div>
       </td>
       <td className="px-5 py-3 text-right">
-        <button
-          onClick={() => setEditing(true)}
-          className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition"
-          title="Editar"
-        >
-          <Pencil size={13} />
-        </button>
+        <div className="flex items-center justify-end gap-1">
+          <button
+            onClick={() => { setShowPassword(!showPassword); setPwMsg(null); }}
+            className="p-1 rounded hover:bg-primary/10 text-muted-foreground hover:text-primary transition"
+            title="Asignar contraseña"
+          >
+            <KeyRound size={13} />
+          </button>
+          <button
+            onClick={() => setEditing(true)}
+            className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition"
+            title="Editar"
+          >
+            <Pencil size={13} />
+          </button>
+          <ConfirmModal
+            title="Eliminar Miembro"
+            message={`¿Eliminar a ${user.name} (${user.email}) del equipo? Se eliminarán sus asignaciones y registros de tiempo.`}
+            onConfirm={async () => {
+              await deleteUser(user.id);
+            }}
+          >
+            <button
+              className="p-1 rounded hover:bg-danger/10 text-muted-foreground hover:text-danger transition"
+              title="Eliminar"
+            >
+              <Trash2 size={13} />
+            </button>
+          </ConfirmModal>
+        </div>
       </td>
     </tr>
+    {showPassword && (
+      <tr className="border-b border-border last:border-0 bg-primary/5">
+        <td colSpan={6} className="px-5 py-3">
+          <div className="flex items-center gap-3 max-w-lg">
+            <span className="text-xs text-muted-foreground whitespace-nowrap">
+              Contraseña para <strong>{user.email}</strong>:
+            </span>
+            <PasswordInput
+              name="pw"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="Mínimo 6 caracteres"
+              minLength={6}
+              className="flex-1 px-2 py-1 rounded border border-border bg-background text-foreground text-sm focus:outline-none focus:ring-1 focus:ring-primary/50"
+            />
+            <button
+              onClick={handleSetPassword}
+              disabled={pwLoading || password.length < 6}
+              className="px-3 py-1 rounded-lg bg-primary text-primary-foreground text-xs font-medium hover:bg-primary/90 transition disabled:opacity-50"
+            >
+              {pwLoading ? "..." : "Guardar"}
+            </button>
+            <button
+              onClick={() => { setShowPassword(false); setPassword(""); setPwMsg(null); }}
+              className="p-1 rounded hover:bg-danger/20 text-danger transition"
+            >
+              <X size={14} />
+            </button>
+            {pwMsg && (
+              <span className={`text-xs font-medium ${pwMsg.ok ? "text-success" : "text-danger"}`}>
+                {pwMsg.text}
+              </span>
+            )}
+          </div>
+        </td>
+      </tr>
+    )}
+    </>
   );
 }

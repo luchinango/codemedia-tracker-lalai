@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { login } from "@/app/actions/auth";
 import { useSearchParams } from "next/navigation";
+import { PasswordInput } from "@/components/ui/password-input";
 
 export default function LoginPage() {
   const [error, setError] = useState<string | null>(null);
@@ -57,10 +58,8 @@ export default function LoginPage() {
               >
                 Contraseña
               </label>
-              <input
-                id="password"
+              <PasswordInput
                 name="password"
-                type="password"
                 required
                 autoComplete="current-password"
                 className="w-full px-3 py-2 border border-border rounded-lg bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary"

@@ -31,3 +31,37 @@ export async function logout() {
   revalidatePath("/", "layout");
   redirect("/login");
 }
+
+export async function changeOwnPassword(currentPassword: string, newPassword: string) {
+  if (!currentPassword || !newPassword) {
+    return { error: "Ambos campos son requeridos" };
+  }
+  if (newPassword.length < 6) {
+    return { error: "La nueva contraseña debe tener al menos 6 caracteres" };
+  }
+
+  const supabase = await createClient();
+
+  // Verify current user
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user?.email) {
+    return { error: "No autenticado" };
+  }
+
+  // Verify current password by attempting sign-in
+  const { error: signInError } = await supabase.auth.signInWithPassword({
+    email: user.email,
+    password: currentPassword,
+  });
+  if (signInError) {
+    return { error: "Contraseña actual incorrecta" };
+  }
+
+  // Update password
+  const { error } = await supabase.auth.updateUser({ password: newPassword });
+  if (error) {
+    return { error: error.message };
+  }
+
+  return { success: true, message: "Contraseña actualizada" };
+}

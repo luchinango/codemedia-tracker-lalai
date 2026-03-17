@@ -85,30 +85,17 @@ export function CreateProjectForm({ companies, devs }: CreateProjectFormProps) {
       </div>
 
       <form action={handleSubmit} className="space-y-3">
-        <div className="grid grid-cols-3 gap-3">
-          <div className="col-span-2">
-            <label className="block text-xs font-medium text-muted-foreground mb-1">
-              Nombre del Proyecto
-            </label>
-            <input
-              name="name"
-              required
-              placeholder="Ej: Implementación Texas Mobile"
-              className="w-full px-3 py-2 rounded-lg border border-border bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
-            />
-          </div>
-          <div>
-            <label className="block text-xs font-medium text-muted-foreground mb-1">
-              Código
-            </label>
-            <input
-              name="project_code"
-              required
-              maxLength={5}
-              placeholder="TXA"
-              className="w-full px-3 py-2 rounded-lg border border-border bg-background text-foreground text-sm uppercase focus:outline-none focus:ring-2 focus:ring-primary/50"
-            />
-          </div>
+        <div>
+          <label className="block text-xs font-medium text-muted-foreground mb-1">
+            Nombre del Proyecto
+          </label>
+          <input
+            name="name"
+            required
+            placeholder="Ej: Implementación Texas Mobile"
+            className="w-full px-3 py-2 rounded-lg border border-border bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
+          />
+          <p className="text-[10px] text-muted-foreground mt-1">El código se genera automáticamente (ej: IMP001)</p>
         </div>
 
         <div>
@@ -190,15 +177,16 @@ export function CreateProjectForm({ companies, devs }: CreateProjectFormProps) {
 
         <div>
           <label className="block text-xs font-medium text-muted-foreground mb-1">
-            Email del Cliente
+            Tipo de Cobro
           </label>
-          <input
-            name="client_email"
-            type="email"
-            required
-            placeholder="contacto@empresa.com"
+          <select
+            name="billing_type"
+            defaultValue="fixed"
             className="w-full px-3 py-2 rounded-lg border border-border bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
-          />
+          >
+            <option value="fixed">Por Proyecto (precio fijo)</option>
+            <option value="hourly">Por Horas</option>
+          </select>
         </div>
 
         <div>

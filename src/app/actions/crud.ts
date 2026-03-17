@@ -5,20 +5,28 @@ import { revalidatePath } from "next/cache";
 
 export async function createProject(formData: FormData) {
   const name = formData.get("name") as string;
-  const clientEmail = formData.get("client_email") as string;
+  const clientEmail = (formData.get("client_email") as string) || "";
   const quotedPrice = parseFloat(formData.get("quoted_price") as string) || 0;
   const companyId = (formData.get("company_id") as string) || null;
   const currency = (formData.get("currency") as string) || "USD";
+  const billingType = (formData.get("billing_type") as string) || "fixed";
   const responsibleId = (formData.get("responsible_id") as string) || null;
   const collaboratorIds = formData.getAll("collaborator_ids") as string[];
 
-  if (!name || !clientEmail) {
-    return { error: "Nombre y email del cliente son requeridos" };
+  if (!name) {
+    return { error: "El nombre del proyecto es requerido" };
   }
 
   const supabase = await createClient();
 
-  const projectCode = ((formData.get("project_code") as string) || "").toUpperCase().trim();
+  // Auto-generate project code: 3 letters from name + 3-digit sequential number
+  const letters = name.replace(/[^A-Za-z]/g, "").substring(0, 3).toUpperCase().padEnd(3, "X");
+  const { count: existingCount } = await supabase
+    .from("projects")
+    .select("id", { count: "exact", head: true })
+    .ilike("project_code", `${letters}%`);
+  const seqNum = (existingCount ?? 0) + 1;
+  const projectCode = `${letters}${String(seqNum).padStart(3, "0")}`;
 
   const insertPayload: Record<string, unknown> = {
     name,
@@ -26,11 +34,10 @@ export async function createProject(formData: FormData) {
     quoted_price: quotedPrice,
     company_id: companyId,
     currency,
+    billing_type: billingType,
     status: "active",
+    project_code: projectCode,
   };
-  if (projectCode) {
-    insertPayload.project_code = projectCode;
-  }
   if (responsibleId) {
     insertPayload.responsible_id = responsibleId;
   }
@@ -88,6 +95,22 @@ export async function createIssue(formData: FormData) {
   if (error || !issue) {
     return { error: error?.message ?? "Error al crear tarea" };
   }
+
+  // Generate issue_code: {PROJECT_CODE}{NNN}
+  const { data: proj } = await supabase
+    .from("projects")
+    .select("project_code")
+    .eq("id", projectId)
+    .single();
+
+  const projCode = ((proj as Record<string, unknown>)?.project_code as string) ?? "???";
+  const { count: issueCount } = await supabase
+    .from("issues")
+    .select("id", { count: "exact", head: true })
+    .eq("project_id", projectId);
+
+  const issueCode = `${projCode}${String(issueCount ?? 1).padStart(3, "0")}`;
+  await supabase.from("issues").update({ issue_code: issueCode }).eq("id", issue.id);
 
   // Insert assignments
   if (assignedUserIds.length > 0) {
@@ -190,11 +213,70 @@ export async function upsertUser(formData: FormData) {
   return { success: true };
 }
 
+/**
+ * Set or create auth credentials for an existing user.
+ * Creates a Supabase Auth account if none exists, or updates the password.
+ */
+export async function setUserPassword(email: string, password: string) {
+  if (!email || !password) {
+    return { error: "Email y contraseña son requeridos" };
+  }
+  if (password.length < 6) {
+    return { error: "La contraseña debe tener al menos 6 caracteres" };
+  }
+
+  const { createAdminClient } = await import("@/lib/supabase/admin");
+  const admin = createAdminClient();
+  const supabase = await createClient();
+
+  // Check if user already has an auth account
+  const { data: appUser } = await supabase
+    .from("users")
+    .select("id, auth_id")
+    .eq("email", email)
+    .single();
+
+  if (!appUser) {
+    return { error: "Usuario no encontrado" };
+  }
+
+  if (appUser.auth_id) {
+    // Update existing auth user's password
+    const { error } = await admin.auth.admin.updateUserById(appUser.auth_id, {
+      password,
+    });
+    if (error) return { error: error.message };
+    return { success: true, message: "Contraseña actualizada" };
+  } else {
+    // Create new auth account
+    const { data: authUser, error: authError } =
+      await admin.auth.admin.createUser({
+        email,
+        password,
+        email_confirm: true,
+      });
+
+    if (authError) {
+      return { error: `Error: ${authError.message}` };
+    }
+
+    // Link auth_id
+    await supabase
+      .from("users")
+      .update({ auth_id: authUser.user.id })
+      .eq("id", appUser.id);
+
+    revalidatePath("/admin/users");
+    return { success: true, message: "Cuenta creada y contraseña asignada" };
+  }
+}
+
 export async function createCompany(formData: FormData) {
   const name = formData.get("name") as string;
   const taxId = (formData.get("tax_id") as string) || null;
-  const paymentMethod = (formData.get("payment_method") as string) || "Transferencia";
-  const billingDetails = (formData.get("billing_details") as string) || null;
+  const contactPerson = (formData.get("contact_person") as string) || null;
+  const contactPhone = (formData.get("contact_phone") as string) || null;
+  const contactEmail = (formData.get("contact_email") as string) || null;
 
   if (!name) {
     return { error: "Nombre de la empresa es requerido" };
@@ -204,8 +286,9 @@ export async function createCompany(formData: FormData) {
   const { error } = await supabase.from("companies").insert({
     name,
     tax_id: taxId,
-    payment_method: paymentMethod,
-    billing_details: billingDetails,
+    contact_person: contactPerson,
+    contact_phone: contactPhone,
+    contact_email: contactEmail,
   });
 
   if (error) {
@@ -224,6 +307,9 @@ export async function updateCompany(formData: FormData) {
   const paymentMethod = (formData.get("payment_method") as string) || "Transferencia";
   const billingDetails = (formData.get("billing_details") as string) || null;
   const notificationEmail = (formData.get("notification_email") as string) || null;
+  const contactPerson = (formData.get("contact_person") as string) || null;
+  const contactPhone = (formData.get("contact_phone") as string) || null;
+  const contactEmail = (formData.get("contact_email") as string) || null;
 
   if (!id || !name) {
     return { error: "ID y nombre son requeridos" };
@@ -238,6 +324,9 @@ export async function updateCompany(formData: FormData) {
       payment_method: paymentMethod,
       billing_details: billingDetails,
       notification_email: notificationEmail,
+      contact_person: contactPerson,
+      contact_phone: contactPhone,
+      contact_email: contactEmail,
     })
     .eq("id", id);
 
@@ -342,6 +431,39 @@ export async function deletePayment(id: string) {
   return { success: true };
 }
 
+export async function deleteUser(userId: string) {
+  if (!userId) return { error: "ID requerido" };
+
+  const supabase = await createClient();
+
+  // Get user to check for auth_id
+  const { data: user } = await supabase
+    .from("users")
+    .select("auth_id")
+    .eq("id", userId)
+    .single();
+
+  // Delete issue assignments first (FK constraint)
+  await supabase.from("issue_assignments").delete().eq("user_id", userId);
+
+  // Delete time logs
+  await supabase.from("time_logs").delete().eq("user_id", userId);
+
+  // Delete user record
+  const { error } = await supabase.from("users").delete().eq("id", userId);
+  if (error) return { error: error.message };
+
+  // Delete auth account if exists
+  if (user?.auth_id) {
+    const { createAdminClient } = await import("@/lib/supabase/admin");
+    const admin = createAdminClient();
+    await admin.auth.admin.deleteUser(user.auth_id);
+  }
+
+  revalidatePath("/admin/users");
+  return { success: true };
+}
+
 export async function moveIssue(issueId: string, newStatus: "todo" | "in_progress" | "done") {
   if (!issueId || !newStatus) return { error: "ID y estado requeridos" };
 
@@ -368,9 +490,16 @@ export async function moveIssue(issueId: string, newStatus: "todo" | "in_progres
     }
   }
 
+  const updatePayload: Record<string, unknown> = { status: newStatus };
+  if (newStatus === "done") {
+    updatePayload.completed_at = new Date().toISOString();
+  } else {
+    updatePayload.completed_at = null;
+  }
+
   const { error } = await supabase
     .from("issues")
-    .update({ status: newStatus })
+    .update(updatePayload)
     .eq("id", issueId);
 
   if (error) {
@@ -379,6 +508,7 @@ export async function moveIssue(issueId: string, newStatus: "todo" | "in_progres
 
   revalidatePath("/kanban");
   revalidatePath("/projects");
+  revalidatePath("/historial/tareas");
   return { success: true };
 }
 
@@ -395,15 +525,23 @@ export async function toggleProjectStatus(projectId: string) {
   if (!project) return { error: "Proyecto no encontrado" };
 
   const newStatus = project.status === "completed" ? "active" : "completed";
+  const updatePayload: Record<string, unknown> = { status: newStatus };
+  if (newStatus === "completed") {
+    updatePayload.completed_at = new Date().toISOString();
+  } else {
+    updatePayload.completed_at = null;
+  }
+
   const { error } = await supabase
     .from("projects")
-    .update({ status: newStatus })
+    .update(updatePayload)
     .eq("id", projectId);
 
   if (error) return { error: error.message };
 
   revalidatePath("/");
   revalidatePath("/projects");
+  revalidatePath("/historial/proyectos");
   return { success: true, status: newStatus };
 }
 
@@ -431,5 +569,85 @@ export async function addSelfAsCollaborator(projectId: string, userId: string) {
 
   revalidatePath(`/projects/${projectId}`);
   revalidatePath("/");
+  return { success: true };
+}
+
+export async function updateProject(formData: FormData) {
+  const id = formData.get("id") as string;
+  const name = formData.get("name") as string;
+  const companyId = (formData.get("company_id") as string) || null;
+  const currency = (formData.get("currency") as string) || "USD";
+  const billingType = (formData.get("billing_type") as string) || "fixed";
+  const responsibleId = (formData.get("responsible_id") as string) || null;
+  const quotedPrice = parseFloat(formData.get("quoted_price") as string) || 0;
+
+  if (!id || !name) return { error: "ID y nombre son requeridos" };
+
+  const supabase = await createClient();
+  const payload: Record<string, unknown> = {
+    name,
+    company_id: companyId,
+    currency,
+    quoted_price: quotedPrice,
+  };
+
+  const { error } = await supabase
+    .from("projects")
+    .update(payload)
+    .eq("id", id);
+
+  if (error) return { error: error.message };
+
+  revalidatePath("/");
+  revalidatePath("/projects");
+  revalidatePath(`/projects/${id}`);
+  revalidatePath("/historial/proyectos");
+  return { success: true };
+}
+
+export async function updateIssue(issueId: string, data: { title?: string; description?: string | null }) {
+  if (!issueId) return { error: "ID requerido" };
+  const supabase = await createClient();
+  const payload: Record<string, unknown> = {};
+  if (data.title !== undefined) payload.title = data.title;
+  if (data.description !== undefined) payload.description = data.description;
+  if (Object.keys(payload).length === 0) return { error: "Nada que actualizar" };
+  const { error } = await supabase.from("issues").update(payload).eq("id", issueId);
+  if (error) return { error: error.message };
+  revalidatePath("/");
+  return { success: true };
+}
+
+export async function updateTimeLog(logId: string, durationMinutes: number) {
+  if (!logId) return { error: "ID requerido" };
+  if (durationMinutes < 0) return { error: "Duración no puede ser negativa" };
+
+  const supabase = await createClient();
+
+  const { data: log } = await supabase
+    .from("time_logs")
+    .select("start_time")
+    .eq("id", logId)
+    .single();
+
+  if (!log) return { error: "Registro no encontrado" };
+
+  const startTime = new Date(log.start_time);
+  const endTime = new Date(startTime.getTime() + durationMinutes * 60000);
+
+  const { error } = await supabase
+    .from("time_logs")
+    .update({
+      duration_minutes: durationMinutes,
+      duration_seconds: durationMinutes * 60,
+      end_time: endTime.toISOString(),
+    })
+    .eq("id", logId);
+
+  if (error) return { error: error.message };
+
+  revalidatePath("/kanban");
+  revalidatePath("/projects");
+  revalidatePath("/historial/tareas");
   return { success: true };
 }

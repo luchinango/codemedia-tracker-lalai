@@ -1,6 +1,7 @@
 "use client";
 
-import { Users, TrendingUp, TrendingDown, Download } from "lucide-react";
+import { useState } from "react";
+import { Users, TrendingUp, TrendingDown, Download, ChevronRight } from "lucide-react";
 import Link from "next/link";
 
 interface DevProject {
@@ -41,6 +42,54 @@ interface Props {
 
 function fmt(n: number) {
   return n.toLocaleString("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+function DevCard({ dev }: { dev: DevReport }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="border border-border rounded-xl bg-white dark:bg-muted overflow-hidden">
+      <button
+        onClick={() => setOpen(!open)}
+        className="w-full p-4 flex items-center justify-between hover:bg-muted/50 transition text-left"
+      >
+        <div className="flex items-center gap-2">
+          <ChevronRight
+            size={14}
+            className={`text-muted-foreground transition-transform ${open ? "rotate-90" : ""}`}
+          />
+          <div>
+            <h3 className="font-medium text-foreground">{dev.name}</h3>
+            <p className="text-xs text-muted-foreground">
+              Bs{dev.rate_bob_hr.toFixed(2)}/hr · {dev.projects.length} proyecto{dev.projects.length !== 1 ? "s" : ""}
+            </p>
+          </div>
+        </div>
+        <div className="text-right">
+          <p className="text-sm font-bold text-foreground">{dev.total_hours.toFixed(1)}h</p>
+          <p className="text-xs text-muted-foreground">
+            Costo: Bs{fmt(dev.payroll_cost_bob)}
+          </p>
+        </div>
+      </button>
+      {open && dev.projects.length > 0 && (
+        <table className="w-full text-sm border-t border-border">
+          <tbody>
+            {dev.projects.map((proj) => (
+              <tr key={proj.project_id} className="border-b border-border last:border-0">
+                <td className="px-4 py-2">
+                  <Link href={`/projects/${proj.project_id}`} className="text-foreground hover:text-primary hover:underline">
+                    {proj.project_name}
+                  </Link>
+                </td>
+                <td className="px-4 py-2 text-right text-muted-foreground">{proj.hours.toFixed(1)}h</td>
+                <td className="px-4 py-2 text-right font-medium text-foreground">Bs{proj.cost_bob.toFixed(2)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+    </div>
+  );
 }
 
 export function InternalReportClient({
@@ -181,39 +230,7 @@ export function InternalReportClient({
       <h2 className="text-lg font-semibold text-foreground mb-4">Por Desarrollador</h2>
       <div className="space-y-4 mb-8">
         {devReports.map((dev) => (
-          <div key={dev.id} className="border border-border rounded-xl bg-white dark:bg-muted overflow-hidden">
-            <div className="p-4 border-b border-border flex items-center justify-between">
-              <div>
-                <h3 className="font-medium text-foreground">{dev.name}</h3>
-                <p className="text-xs text-muted-foreground">
-                  Bs{dev.rate_bob_hr.toFixed(2)}/hr
-                </p>
-              </div>
-              <div className="text-right">
-                <p className="text-sm font-bold text-foreground">{dev.total_hours.toFixed(1)}h</p>
-                <p className="text-xs text-muted-foreground">
-                  Costo: Bs{fmt(dev.payroll_cost_bob)}
-                </p>
-              </div>
-            </div>
-            {dev.projects.length > 0 && (
-              <table className="w-full text-sm">
-                <tbody>
-                  {dev.projects.map((proj) => (
-                    <tr key={proj.project_id} className="border-b border-border last:border-0">
-                      <td className="px-4 py-2">
-                        <Link href={`/projects/${proj.project_id}`} className="text-foreground hover:text-primary hover:underline">
-                          {proj.project_name}
-                        </Link>
-                      </td>
-                      <td className="px-4 py-2 text-right text-muted-foreground">{proj.hours.toFixed(1)}h</td>
-                      <td className="px-4 py-2 text-right font-medium text-foreground">Bs{proj.cost_bob.toFixed(2)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
-          </div>
+          <DevCard key={dev.id} dev={dev} />
         ))}
       </div>
 

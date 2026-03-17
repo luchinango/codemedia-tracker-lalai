@@ -48,18 +48,30 @@ export function CreateIssueForm({ projectId, users }: CreateIssueFormProps) {
 
   if (!open) {
     return (
+      <div className="relative">
+        <button
+          onClick={() => setOpen(true)}
+          className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:opacity-90 transition"
+        >
+          <Plus size={14} />
+          Nueva Tarea
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="relative">
       <button
-        onClick={() => setOpen(true)}
+        onClick={() => setOpen(false)}
         className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:opacity-90 transition"
       >
         <Plus size={14} />
         Nueva Tarea
       </button>
-    );
-  }
 
-  return (
-    <div className="border border-border rounded-xl p-4 bg-white dark:bg-muted mb-4">
+      <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
+      <div className="absolute right-0 top-full mt-2 z-50 w-80 max-h-[80vh] overflow-y-auto border border-border rounded-xl p-4 bg-white dark:bg-muted shadow-xl">
       <div className="flex items-center justify-between mb-3">
         <h3 className="font-semibold text-foreground text-sm">Nueva Tarea</h3>
         <button
@@ -109,11 +121,11 @@ export function CreateIssueForm({ projectId, users }: CreateIssueFormProps) {
           />
         </div>
 
-        {/* Dev multi-select */}
+        {/* Multi-select */}
         {users.length > 0 && (
           <div>
             <label className="block text-xs font-medium text-muted-foreground mb-1">
-              Asignar Desarrolladores
+              Asignar Personas
             </label>
             <div className="flex flex-wrap gap-2">
               {users.map((u) => {
@@ -149,6 +161,7 @@ export function CreateIssueForm({ projectId, users }: CreateIssueFormProps) {
           {loading ? "Creando..." : "Crear Tarea"}
         </button>
       </form>
+      </div>
     </div>
   );
 }

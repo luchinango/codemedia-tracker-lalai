@@ -4,8 +4,6 @@ import { useState } from "react";
 import { Building2, X } from "lucide-react";
 import { createCompany } from "@/app/actions/crud";
 
-const PAYMENT_METHODS = ["Transferencia", "PayPal", "Efectivo", "Crypto"] as const;
-
 export function CompanyForm() {
   const [open, setOpen] = useState(false);
   const [error, setError] = useState("");
@@ -63,39 +61,47 @@ export function CompanyForm() {
 
         <div>
           <label className="block text-xs font-medium text-muted-foreground mb-1">
-            RFC / Tax ID (opcional)
+            NIT / Tax ID (opcional)
           </label>
           <input
             name="tax_id"
-            placeholder="Ej: XAXX010101000"
+            placeholder="Ej: 1234567890"
             className="w-full px-3 py-2 rounded-lg border border-border bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
           />
         </div>
 
         <div>
           <label className="block text-xs font-medium text-muted-foreground mb-1">
-            Método de Pago
+            Persona de Contacto
           </label>
-          <select
-            name="payment_method"
-            defaultValue="Transferencia"
+          <input
+            name="contact_person"
+            placeholder="Nombre completo"
             className="w-full px-3 py-2 rounded-lg border border-border bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
-          >
-            {PAYMENT_METHODS.map((m) => (
-              <option key={m} value={m}>{m}</option>
-            ))}
-          </select>
+          />
         </div>
 
         <div>
           <label className="block text-xs font-medium text-muted-foreground mb-1">
-            Detalles de Facturación (opcional)
+            Teléfono de Contacto
           </label>
-          <textarea
-            name="billing_details"
-            rows={2}
-            placeholder="CLABE, dirección fiscal, etc."
-            className="w-full px-3 py-2 rounded-lg border border-border bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 resize-none"
+          <input
+            name="contact_phone"
+            type="tel"
+            placeholder="+591 70000000"
+            className="w-full px-3 py-2 rounded-lg border border-border bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
+          />
+        </div>
+
+        <div>
+          <label className="block text-xs font-medium text-muted-foreground mb-1">
+            Email de Contacto
+          </label>
+          <input
+            name="contact_email"
+            type="email"
+            placeholder="contacto@empresa.com"
+            className="w-full px-3 py-2 rounded-lg border border-border bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
           />
         </div>
 

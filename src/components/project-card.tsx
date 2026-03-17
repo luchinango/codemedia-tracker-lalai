@@ -1,9 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowRight, Trash2, CheckCircle, RotateCcw } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { ArrowRight, Trash2, CheckCircle, RotateCcw, Calendar } from "lucide-react";
 import { deleteProject, toggleProjectStatus } from "@/app/actions/crud";
 import { ConfirmModal } from "@/components/ui/confirm-modal";
+import { useToast } from "@/components/ui/toast";
+import { EditProjectForm } from "@/components/forms/edit-project-form";
 import { useState } from "react";
 
 interface TaskCounts {
@@ -21,15 +24,24 @@ interface ProjectCardProps {
     quoted_price: number;
     currency?: string;
     project_code?: string;
+    billing_type?: string;
+    created_at?: string;
+    completed_at?: string | null;
+    company_id?: string | null;
+    responsible_id?: string | null;
   };
   companyName?: string | null;
   paymentMethod?: string | null;
   responsibleName?: string | null;
   taskCounts?: TaskCounts;
+  companies?: { id: string; name: string }[];
+  devs?: { id: string; name: string }[];
 }
 
-export function ProjectCard({ project, companyName, responsibleName, taskCounts }: ProjectCardProps) {
+export function ProjectCard({ project, companyName, responsibleName, taskCounts, companies, devs }: ProjectCardProps) {
   const [toggling, setToggling] = useState(false);
+  const router = useRouter();
+  const { toast } = useToast();
   const currency = project.currency ?? "USD";
   const symbol = currency === "BOB" ? "Bs" : "$";
   const isCompleted = project.status === "completed";
@@ -38,7 +50,14 @@ export function ProjectCard({ project, companyName, responsibleName, taskCounts 
   async function handleToggleStatus() {
     setToggling(true);
     await toggleProjectStatus(project.id);
+    router.refresh();
     setToggling(false);
+    toast(
+      isCompleted
+        ? `Proyecto "${project.name}" reactivado`
+        : `Proyecto "${project.name}" finalizado`,
+      "success"
+    );
   }
 
   return (
@@ -57,13 +76,26 @@ export function ProjectCard({ project, companyName, responsibleName, taskCounts 
           <h2 className="font-semibold text-foreground truncate">{project.name}</h2>
         </div>
         <div className="flex items-center gap-1 shrink-0">
+          <EditProjectForm
+            project={{
+              id: project.id,
+              name: project.name,
+              company_id: project.company_id,
+              currency: project.currency,
+              billing_type: project.billing_type,
+              responsible_id: project.responsible_id,
+              quoted_price: project.quoted_price,
+            }}
+            companies={companies ?? []}
+            devs={devs ?? []}
+          />
           <button
             onClick={handleToggleStatus}
             disabled={toggling}
-            className={`p-1 rounded transition disabled:opacity-50 ${
+            className={`p-1.5 rounded-lg border transition disabled:opacity-50 ${
               isCompleted
-                ? "hover:bg-warning/10 text-success hover:text-warning"
-                : "hover:bg-success/10 text-muted-foreground hover:text-success"
+                ? "border-warning/50 bg-warning/10 hover:bg-warning/20 text-warning"
+                : "border-success/50 bg-success/10 hover:bg-success/20 text-success"
             }`}
             title={isCompleted ? "Reactivar proyecto" : "Marcar como terminado"}
           >
@@ -76,15 +108,15 @@ export function ProjectCard({ project, companyName, responsibleName, taskCounts 
               await deleteProject(project.id);
             }}
           >
-            <button className="p-1 rounded hover:bg-danger/10 text-muted-foreground hover:text-danger transition">
+            <button className={`p-1 rounded hover:bg-danger/10 text-muted-foreground hover:text-danger transition ${isCompleted ? "hidden" : ""}`}>
               <Trash2 size={14} />
             </button>
           </ConfirmModal>
         </div>
       </div>
 
-      {/* Company + status */}
-      <div className="flex items-center gap-2 mb-2">
+      {/* Company + status + billing type */}
+      <div className="flex items-center gap-2 mb-2 flex-wrap">
         {companyName && (
           <span className="text-xs text-primary font-medium">
             {companyName}
@@ -97,6 +129,26 @@ export function ProjectCard({ project, companyName, responsibleName, taskCounts 
         }`}>
           {isCompleted ? "Terminado" : "Activo"}
         </span>
+        {project.billing_type && (
+          <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${
+            project.billing_type === "hourly"
+              ? "bg-warning/10 text-warning"
+              : "bg-muted text-muted-foreground"
+          }`}>
+            {project.billing_type === "hourly" ? "Por Horas" : "Por Proyecto"}
+          </span>
+        )}
+      </div>
+
+      {/* Dates */}
+      <div className="flex items-center gap-3 text-[10px] text-muted-foreground mb-2">
+        <Calendar size={11} className="shrink-0" />
+        {project.created_at && (
+          <span>Creado: {new Date(project.created_at).toLocaleDateString("es-BO", { day: "2-digit", month: "short", year: "numeric" })}</span>
+        )}
+        {isCompleted && project.completed_at && (
+          <span>Completado: {new Date(project.completed_at).toLocaleDateString("es-BO", { day: "2-digit", month: "short", year: "numeric" })}</span>
+        )}
       </div>
 
       {/* Task counts bar */}

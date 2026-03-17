@@ -48,8 +48,8 @@ export default async function AdminCompaniesPage() {
               <tr className="border-b border-border text-left text-muted-foreground">
                 <th className="px-5 py-3 font-medium">Nombre</th>
                 <th className="px-5 py-3 font-medium">NIT</th>
-                <th className="px-5 py-3 font-medium">Método de Pago</th>
-                <th className="px-5 py-3 font-medium">Email Notificación</th>
+                <th className="px-5 py-3 font-medium">Contacto</th>
+                <th className="px-5 py-3 font-medium">Email</th>
                 <th className="px-5 py-3 font-medium">Último Pago</th>
                 <th className="px-5 py-3 font-medium text-right">Acciones</th>
               </tr>

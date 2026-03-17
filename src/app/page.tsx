@@ -19,7 +19,7 @@ export default async function ProjectsPage({ searchParams }: PageProps) {
   const supabase = await createClient();
   const [{ data: projects }, { data: users }, { data: companies }] = await Promise.all([
     supabase.from("projects").select("*, companies:company_id(name, payment_method), responsible:responsible_id(id, name)").order("created_at", { ascending: false }),
-    supabase.from("users").select("id, name, role").eq("role", "dev"),
+    supabase.from("users").select("id, name, role").order("name"),
     supabase.from("companies").select("id, name").order("name"),
   ]);
 
@@ -47,8 +47,8 @@ export default async function ProjectsPage({ searchParams }: PageProps) {
   const activeCount = allProjects.filter((p) => p.status !== "completed").length;
   const completedCount = allProjects.filter((p) => p.status === "completed").length;
 
-  const devs = (users ?? []).map((u) => ({ id: u.id, name: u.name }));
-  const hasDevs = devs.length > 0;
+  const team = (users ?? []).map((u) => ({ id: u.id, name: u.name }));
+  const hasTeam = team.length > 0;
 
   return (
     <div>
@@ -57,15 +57,15 @@ export default async function ProjectsPage({ searchParams }: PageProps) {
         <div className="flex items-center gap-3">
           <CompanyForm />
           <CreateUserForm />
-          <CreateProjectForm companies={companies ?? []} devs={devs} />
+          <CreateProjectForm companies={companies ?? []} devs={team} />
         </div>
       </div>
 
-      {!hasDevs && (
+      {!hasTeam && (
         <div className="border border-warning/50 bg-warning/10 rounded-xl p-4 mb-6">
-          <p className="text-sm text-foreground font-medium">⚠️ No hay desarrolladores registrados</p>
+          <p className="text-sm text-foreground font-medium">⚠️ No hay miembros del equipo registrados</p>
           <p className="text-xs text-muted-foreground mt-1">
-            Agrega al menos un desarrollador para poder usar el timer en las tareas.
+            Agrega al menos un miembro del equipo para poder asignar proyectos y tareas.
           </p>
         </div>
       )}
@@ -99,11 +99,18 @@ export default async function ProjectsPage({ searchParams }: PageProps) {
                   ...project,
                   currency: (project as Record<string, unknown>).currency as string | undefined,
                   project_code: (project as Record<string, unknown>).project_code as string | undefined,
+                  billing_type: (project as Record<string, unknown>).billing_type as string | undefined,
+                  created_at: (project as Record<string, unknown>).created_at as string | undefined,
+                  completed_at: (project as Record<string, unknown>).completed_at as string | null | undefined,
+                  company_id: (project as Record<string, unknown>).company_id as string | null | undefined,
+                  responsible_id: (project as Record<string, unknown>).responsible_id as string | null | undefined,
                 }}
                 companyName={comp?.name}
                 paymentMethod={comp?.payment_method}
                 responsibleName={resp?.name}
                 taskCounts={taskCountMap.get(project.id)}
+                companies={(companies ?? []).map((c) => ({ id: c.id, name: c.name }))}
+                devs={team}
               />
             );
           })}

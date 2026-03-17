@@ -29,6 +29,13 @@ interface KardexTableProps {
   projects: Project[];
 }
 
+type FilterMode = "pending" | "paid" | "all";
+
+function fmtDate(iso: string): string {
+  const d = new Date(iso);
+  return d.toLocaleDateString("es-BO", { day: "2-digit", month: "short", year: "numeric" });
+}
+
 export function KardexTable({ payments, projects }: KardexTableProps) {
   const [showForm, setShowForm] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -36,6 +43,7 @@ export function KardexTable({ payments, projects }: KardexTableProps) {
   const [selectedProjectId, setSelectedProjectId] = useState(projects[0]?.id ?? "");
   const [paymentType, setPaymentType] = useState("parcial");
   const [amount, setAmount] = useState("");
+  const [filter, setFilter] = useState<FilterMode>("pending");
 
   const selectedProject = projects.find((p) => p.id === selectedProjectId);
   const currency = selectedProject?.currency ?? "USD";
@@ -55,7 +63,6 @@ export function KardexTable({ payments, projects }: KardexTableProps) {
 
   function handleProjectChange(pid: string) {
     setSelectedProjectId(pid);
-    // Recalculate pending if type is total
     if (paymentType === "total") {
       const proj = projects.find((p) => p.id === pid);
       const paidForProj = payments
@@ -79,6 +86,37 @@ export function KardexTable({ payments, projects }: KardexTableProps) {
       setAmount("");
       setPaymentType("parcial");
     }
+  }
+
+  // Build per-project pending balance map
+  const projectPendingMap = new Map<string, number>();
+  for (const proj of projects) {
+    const paid = payments.filter((p) => p.project_id === proj.id).reduce((acc, p) => acc + Number(p.amount), 0);
+    projectPendingMap.set(proj.id, proj.quoted_price - paid);
+  }
+
+  // Filter payments
+  const filteredPayments = payments.filter((p) => {
+    if (filter === "all") return true;
+    const pending = projectPendingMap.get(p.project_id) ?? 0;
+    if (filter === "paid") return pending <= 0;
+    return pending > 0; // "pending"
+  });
+
+  // Calculate running balance per project (payments ordered newest first, walk backwards)
+  function getRunningBalance(payment: Payment): number {
+    const projInfo = projects.find((pr) => pr.id === payment.project_id);
+    if (!projInfo) return 0;
+    // Get payments for same project sorted by date ascending
+    const sameProject = payments
+      .filter((p) => p.project_id === payment.project_id)
+      .sort((a, b) => a.date.localeCompare(b.date));
+    let running = projInfo.quoted_price;
+    for (const p of sameProject) {
+      running -= Number(p.amount);
+      if (p.id === payment.id) return running;
+    }
+    return running;
   }
 
   return (
@@ -181,10 +219,30 @@ export function KardexTable({ payments, projects }: KardexTableProps) {
         </div>
       )}
 
+      {/* Filter tabs */}
+      <div className="flex items-center gap-2 mb-4">
+        {(["pending", "paid", "all"] as FilterMode[]).map((f) => (
+          <button
+            key={f}
+            onClick={() => setFilter(f)}
+            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition ${
+              filter === f
+                ? "bg-primary text-primary-foreground"
+                : "bg-muted text-muted-foreground hover:bg-border"
+            }`}
+          >
+            {f === "pending" ? "Pendientes" : f === "paid" ? "Pagados" : "Todos"}
+          </button>
+        ))}
+        <span className="text-xs text-muted-foreground ml-2">
+          {filteredPayments.length} registros
+        </span>
+      </div>
+
       {/* Payments list */}
-      {payments.length === 0 ? (
+      {filteredPayments.length === 0 ? (
         <div className="text-center py-12 text-muted-foreground">
-          <p>No hay pagos registrados.</p>
+          <p>No hay pagos {filter === "pending" ? "pendientes" : filter === "paid" ? "completados" : "registrados"}.</p>
         </div>
       ) : (
         <div className="border border-border rounded-xl bg-white dark:bg-muted overflow-hidden">
@@ -203,19 +261,17 @@ export function KardexTable({ payments, projects }: KardexTableProps) {
               </tr>
             </thead>
             <tbody>
-              {payments.map((p) => {
+              {filteredPayments.map((p) => {
                 const symbol = p.currency === "BOB" ? "Bs" : "$";
-                // Calculate running balance for this project up to this payment row
-                const sameProjectPayments = payments.filter(
-                  (pay) => pay.project_id === p.project_id
-                );
-                const totalPaidForProject = sameProjectPayments.reduce(
-                  (acc, pay) => acc + Number(pay.amount), 0
-                );
                 const projInfo = projects.find((pr) => pr.id === p.project_id);
+                const runningBalance = getRunningBalance(p);
                 return (
-                  <tr key={p.id} className="border-b border-border last:border-0 hover:bg-muted/50">
-                    <td className="px-5 py-3 text-foreground whitespace-nowrap">{p.date}</td>
+                  <tr
+                    key={p.id}
+                    className="border-b border-border last:border-0 hover:bg-muted/50 group"
+                    title={projInfo ? `Cotizado: ${symbol}${projInfo.quoted_price.toLocaleString("de-DE", { minimumFractionDigits: 2 })} | Saldo después de este pago: ${symbol}${runningBalance.toLocaleString("de-DE", { minimumFractionDigits: 2 })}` : ""}
+                  >
+                    <td className="px-5 py-3 text-foreground whitespace-nowrap">{fmtDate(p.date)}</td>
                     <td className="px-5 py-3 text-foreground font-medium">{p.project_name}</td>
                     <td className="px-5 py-3 text-right font-medium text-foreground">
                       {symbol}{Number(p.amount).toLocaleString("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
@@ -238,14 +294,9 @@ export function KardexTable({ payments, projects }: KardexTableProps) {
                       )}
                     </td>
                     <td className="px-5 py-3 text-right text-xs">
-                      {(() => {
-                        const pendiente = (projInfo?.quoted_price ?? 0) - totalPaidForProject;
-                        return (
-                          <span className={`font-medium ${pendiente > 0 ? "text-warning" : "text-success"}`}>
-                            {symbol}{pendiente.toLocaleString("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                          </span>
-                        );
-                      })()}
+                      <span className={`font-medium ${runningBalance > 0 ? "text-warning" : "text-success"}`}>
+                        {symbol}{runningBalance.toLocaleString("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </span>
                     </td>
                     <td className="px-5 py-3 text-muted-foreground text-xs max-w-50 truncate">
                       {p.notes ?? "—"}

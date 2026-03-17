@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { X, UserPlus } from "lucide-react";
 import { upsertUser } from "@/app/actions/crud";
+import { PasswordInput } from "@/components/ui/password-input";
 
 export function CreateUserForm() {
   const [open, setOpen] = useState(false);
@@ -106,12 +107,10 @@ export function CreateUserForm() {
           <label className="block text-xs font-medium text-muted-foreground mb-1">
             Contraseña (acceso al sistema)
           </label>
-          <input
+          <PasswordInput
             name="password"
-            type="password"
             minLength={6}
             placeholder="Mínimo 6 caracteres"
-            className="w-full px-3 py-2 rounded-lg border border-border bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
           />
           <p className="text-xs text-muted-foreground mt-1">
             Si se llena, se crea cuenta de acceso automáticamente.
@@ -132,21 +131,21 @@ export function CreateUserForm() {
 
         <div>
           <label className="block text-xs font-medium text-muted-foreground mb-1">
-            Pretensión Salarial (mensual)
+            Pretensión Salarial (Bs/mes)
           </label>
           <input
             name="pretension_salarial"
             type="number"
             step="0.01"
             min="0"
-            placeholder="8000.00"
+            placeholder="Ej: 8000"
             value={pretension}
             onChange={(e) => setPretension(e.target.value)}
             className="w-full px-3 py-2 rounded-lg border border-border bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
           />
           {computedRate && (
             <p className="text-xs text-muted-foreground mt-1">
-              Tarifa calculada: <span className="font-medium text-foreground">${computedRate}/hr</span> (salario / 160h)
+              Tarifa calculada: <span className="font-medium text-foreground">Bs{computedRate}/hr</span> (salario / 160h)
             </p>
           )}
         </div>

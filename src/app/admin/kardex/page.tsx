@@ -90,7 +90,7 @@ export default async function KardexPage() {
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
           <Receipt size={24} />
-          Kardex de Pagos
+          Cuentas
         </h1>
         <p className="text-sm text-muted-foreground mt-1">
           Registro de pagos, saldos pendientes y margen por proyecto

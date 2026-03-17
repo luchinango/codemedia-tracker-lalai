@@ -102,7 +102,7 @@ export default async function ProjectDetailPage({
       )
       .eq("project_id", id)
       .order("created_at", { ascending: true }),
-    supabase.from("users").select("id, name, role").eq("role", "dev"),
+    supabase.from("users").select("id, name, role"),
     supabase
       .from("issue_assignments")
       .select("issue_id, users:user_id(id, name)"),
@@ -118,11 +118,15 @@ export default async function ProjectDetailPage({
     assignmentMap.set(a.issue_id, list);
   }
 
-  // Enrich issues with assigned_users
-  const enrichedIssues = (issues ?? []).map((issue) => ({
-    ...issue,
-    assigned_users: assignmentMap.get(issue.id) ?? [],
-  }));
+  // Enrich issues with assigned_users and correlative
+  const enrichedIssues = (issues ?? []).map((issue) => {
+    const issueCode = (issue as Record<string, unknown>).issue_code as string | null;
+    return {
+      ...issue,
+      assigned_users: assignmentMap.get(issue.id) ?? [],
+      correlative: issueCode ?? undefined,
+    };
+  });
 
   // Calculate real cost
   const typedIssues = (issues ?? []) as unknown as IssueWithLogs[];
@@ -165,7 +169,7 @@ export default async function ProjectDetailPage({
             {project.client_email}
           </p>
         </div>
-        <CreateIssueForm projectId={id} users={collaborators.length > 0 ? collaborators : (users ?? [])} />
+        <CreateIssueForm projectId={id} users={(users ?? []).map((u) => ({ id: u.id, name: u.name }))} />
       </div>
 
       {/* Info strip: company + responsible + team + cost */}

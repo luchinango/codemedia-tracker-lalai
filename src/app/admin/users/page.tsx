@@ -42,7 +42,7 @@ export default async function AdminUsersPage() {
         <div>
           <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
             <Users size={24} />
-            Desarrolladores
+            Equipo
           </h1>
           <p className="text-sm text-muted-foreground mt-1">
             Si el email ya existe, se actualizarán la tarifa y el rol automáticamente.
@@ -54,7 +54,7 @@ export default async function AdminUsersPage() {
       {!users || users.length === 0 ? (
         <div className="text-center py-16 text-muted-foreground">
           <Users size={48} className="mx-auto mb-4 opacity-50" />
-          <p>No hay desarrolladores registrados.</p>
+          <p>No hay miembros registrados.</p>
         </div>
       ) : (
         <div className="border border-border rounded-xl bg-white dark:bg-muted overflow-hidden">

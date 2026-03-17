@@ -20,7 +20,7 @@ export default async function KanbanPage({ searchParams }: KanbanPageProps) {
         .from("projects")
         .select("id, name, status, project_code")
         .order("name"),
-      supabase.from("users").select("id, name, role").eq("role", "dev"),
+      supabase.from("users").select("id, name, role").order("name"),
       supabase
         .from("issue_assignments")
         .select("issue_id, users:user_id(id, name)"),
@@ -28,19 +28,6 @@ export default async function KanbanPage({ searchParams }: KanbanPageProps) {
 
   const projects = allProjects ?? [];
   const devs = users ?? [];
-
-  // Fetch collaborators for selected project (for filtering assignable devs)
-  let projectCollaborators: { id: string; name: string }[] = [];
-  if (projectId) {
-    const { data: collabRows } = await supabase
-      .from("project_collaborators")
-      .select("users:user_id(id, name)")
-      .eq("project_id", projectId);
-    type CollabRow = { users: { id: string; name: string } | null };
-    projectCollaborators = ((collabRows ?? []) as unknown as CollabRow[])
-      .map((c) => c.users)
-      .filter((u): u is { id: string; name: string } => u !== null);
-  }
 
   // Build assignment map
   type AssignmentRow = { issue_id: string; users: { id: string; name: string } | null };
@@ -64,27 +51,32 @@ export default async function KanbanPage({ searchParams }: KanbanPageProps) {
 
   const { data: issues } = await issueQuery;
 
-  // Enrich issues with assigned_users, project name, and correlative codes
+  // Enrich issues with assigned_users, project name, and issue code
   const projectMap = new Map(projects.map((p) => [p.id, p.name]));
 
-  // Build correlative: use project_code + sequential task number (e.g., TXA-01)
-  const projectIssueCounters = new Map<string, number>();
+  // Use issue_code from DB when available, else build correlative from project_code
   const projectCodeMap = new Map<string, string>();
   projects.forEach((p) => {
     const code = (p as Record<string, unknown>).project_code as string | null;
     projectCodeMap.set(p.id, code ?? p.name.substring(0, 3).toUpperCase());
   });
 
-  // Sort all issues by created_at for stable correlative numbering
+  // Fallback correlative for issues without issue_code
+  const projectIssueCounters = new Map<string, number>();
   const sortedIssues = [...(issues ?? [])].sort(
     (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
   );
   const correlativeMap = new Map<string, string>();
   for (const issue of sortedIssues) {
-    const count = (projectIssueCounters.get(issue.project_id) ?? 0) + 1;
-    projectIssueCounters.set(issue.project_id, count);
-    const projCode = projectCodeMap.get(issue.project_id) ?? "???";
-    correlativeMap.set(issue.id, `${projCode}-${String(count).padStart(2, "0")}`);
+    const issueCode = (issue as Record<string, unknown>).issue_code as string | null;
+    if (issueCode) {
+      correlativeMap.set(issue.id, issueCode);
+    } else {
+      const count = (projectIssueCounters.get(issue.project_id) ?? 0) + 1;
+      projectIssueCounters.set(issue.project_id, count);
+      const projCode = projectCodeMap.get(issue.project_id) ?? "???";
+      correlativeMap.set(issue.id, `${projCode}${String(count).padStart(3, "0")}`);
+    }
   }
 
   let enrichedIssues = (issues ?? []).map((issue) => ({
@@ -120,7 +112,7 @@ export default async function KanbanPage({ searchParams }: KanbanPageProps) {
           </p>
         </div>
         {projectId && (
-          <CreateIssueForm projectId={projectId} users={projectCollaborators.length > 0 ? projectCollaborators : devs} />
+          <CreateIssueForm projectId={projectId} users={devs.map((u) => ({ id: u.id, name: u.name }))} />
         )}
       </div>
 

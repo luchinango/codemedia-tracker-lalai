@@ -5,6 +5,7 @@ import type { IssueStatus } from "@/lib/types/database";
 import { IssueCard } from "./issue-card";
 import { Circle, Loader2, CheckCircle2 } from "lucide-react";
 import { moveIssue } from "@/app/actions/crud";
+import { useToast } from "@/components/ui/toast";
 
 interface TimeLog {
   id: string;
@@ -52,6 +53,13 @@ const COLUMNS: { status: IssueStatus; label: string; icon: typeof Circle; color:
 export function KanbanBoard({ issues, users }: KanbanBoardProps) {
   const [dragOverStatus, setDragOverStatus] = useState<IssueStatus | null>(null);
   const [moving, setMoving] = useState(false);
+  const { toast } = useToast();
+
+  const STATUS_LABELS: Record<string, string> = {
+    todo: "pendiente",
+    in_progress: "iniciada",
+    done: "completada",
+  };
 
   function handleDragStart(e: React.DragEvent, issueId: string) {
     e.dataTransfer.setData("text/plain", issueId);
@@ -80,6 +88,7 @@ export function KanbanBoard({ issues, users }: KanbanBoardProps) {
     setMoving(true);
     await moveIssue(issueId, targetStatus);
     setMoving(false);
+    toast(`Tarea "${issue.title}" ${STATUS_LABELS[targetStatus] ?? targetStatus}`, "success");
   }
 
   return (

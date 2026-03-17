@@ -11,6 +11,9 @@ interface Company {
   payment_method: string;
   billing_details: string | null;
   notification_email: string | null;
+  contact_person: string | null;
+  contact_phone: string | null;
+  contact_email: string | null;
   created_at: string;
 }
 
@@ -22,6 +25,9 @@ export function CompanyRow({ company, lastPaymentDate }: { company: Company; las
   const [paymentMethod, setPaymentMethod] = useState(company.payment_method);
   const [billingDetails, setBillingDetails] = useState(company.billing_details ?? "");
   const [notificationEmail, setNotificationEmail] = useState(company.notification_email ?? "");
+  const [contactPerson, setContactPerson] = useState(company.contact_person ?? "");
+  const [contactPhone, setContactPhone] = useState(company.contact_phone ?? "");
+  const [contactEmail, setContactEmail] = useState(company.contact_email ?? "");
 
   async function handleSave() {
     setLoading(true);
@@ -32,6 +38,9 @@ export function CompanyRow({ company, lastPaymentDate }: { company: Company; las
     formData.set("payment_method", paymentMethod);
     formData.set("billing_details", billingDetails);
     formData.set("notification_email", notificationEmail);
+    formData.set("contact_person", contactPerson);
+    formData.set("contact_phone", contactPhone);
+    formData.set("contact_email", contactEmail);
     await updateCompany(formData);
     setLoading(false);
     setEditing(false);
@@ -43,6 +52,9 @@ export function CompanyRow({ company, lastPaymentDate }: { company: Company; las
     setPaymentMethod(company.payment_method);
     setBillingDetails(company.billing_details ?? "");
     setNotificationEmail(company.notification_email ?? "");
+    setContactPerson(company.contact_person ?? "");
+    setContactPhone(company.contact_phone ?? "");
+    setContactEmail(company.contact_email ?? "");
     setEditing(false);
   }
 
@@ -71,22 +83,27 @@ export function CompanyRow({ company, lastPaymentDate }: { company: Company; las
           />
         </td>
         <td className="px-5 py-2">
-          <select
-            value={paymentMethod}
-            onChange={(e) => setPaymentMethod(e.target.value)}
-            className="w-full px-2 py-1 rounded border border-border bg-background text-foreground text-sm focus:outline-none focus:ring-1 focus:ring-primary/50"
-          >
-            <option value="Transferencia">Transferencia</option>
-            <option value="PayPal">PayPal</option>
-            <option value="Efectivo">Efectivo</option>
-            <option value="Crypto">Crypto</option>
-          </select>
+          <div className="space-y-1">
+            <input
+              value={contactPerson}
+              onChange={(e) => setContactPerson(e.target.value)}
+              placeholder="Nombre de contacto"
+              className="w-full px-2 py-1 rounded border border-border bg-background text-foreground text-sm focus:outline-none focus:ring-1 focus:ring-primary/50"
+            />
+            <input
+              value={contactPhone}
+              onChange={(e) => setContactPhone(e.target.value)}
+              placeholder="+591 70000000"
+              type="tel"
+              className="w-full px-2 py-1 rounded border border-border bg-background text-foreground text-sm focus:outline-none focus:ring-1 focus:ring-primary/50"
+            />
+          </div>
         </td>
         <td className="px-5 py-2">
           <input
-            value={notificationEmail}
-            onChange={(e) => setNotificationEmail(e.target.value)}
-            placeholder="email@ejemplo.com"
+            value={contactEmail}
+            onChange={(e) => setContactEmail(e.target.value)}
+            placeholder="contacto@empresa.com"
             type="email"
             className="w-full px-2 py-1 rounded border border-border bg-background text-foreground text-sm focus:outline-none focus:ring-1 focus:ring-primary/50"
           />
@@ -119,13 +136,16 @@ export function CompanyRow({ company, lastPaymentDate }: { company: Company; las
     <tr className="border-b border-border last:border-0 hover:bg-muted/50">
       <td className="px-5 py-3 text-foreground font-medium">{company.name}</td>
       <td className="px-5 py-3 text-muted-foreground">{company.tax_id ?? "—"}</td>
-      <td className="px-5 py-3">
-        <span className="text-xs px-2 py-1 rounded-full bg-primary/10 text-primary font-medium">
-          {company.payment_method}
-        </span>
+      <td className="px-5 py-3 text-sm">
+        <div>
+          <p className="text-foreground">{company.contact_person ?? <span className="text-muted-foreground">—</span>}</p>
+          {company.contact_phone && (
+            <a href={`https://wa.me/${company.contact_phone.replace(/\D/g, "")}`} target="_blank" rel="noopener noreferrer" className="text-xs text-green-600 hover:underline">{company.contact_phone}</a>
+          )}
+        </div>
       </td>
       <td className="px-5 py-3 text-muted-foreground text-xs">
-        {company.notification_email ?? <span className="text-warning">Sin email</span>}
+        {company.contact_email ?? company.notification_email ?? <span className="text-warning">Sin email</span>}
       </td>
       <td className="px-5 py-3 text-muted-foreground text-sm">
         {lastPaymentDate
