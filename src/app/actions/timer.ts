@@ -41,6 +41,7 @@ export async function startTimer(issueId: string, userId: string) {
       issueId: issue.id,
       issueTitle: issue.title,
       newStatus: "in_progress",
+      companyEmail: result.companyEmail,
     });
   }
 
@@ -110,6 +111,7 @@ export async function finishTimer(issueId: string, userId: string) {
         issueId,
         issueTitle: result.issue.title,
         newStatus: "done",
+        companyEmail: result.companyEmail,
       });
     }
 
@@ -150,6 +152,7 @@ export async function completeIssue(issueId: string, userId: string) {
       issueId: issue.id,
       issueTitle: issue.title,
       newStatus: "done",
+      companyEmail: result.companyEmail,
     });
   }
 

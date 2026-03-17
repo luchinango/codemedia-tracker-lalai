@@ -64,7 +64,18 @@ export async function getIssueWithProject(issueId: string) {
     .eq("id", issue.project_id)
     .single();
 
-  return { issue, project };
+  // Fetch company notification email if project has a company
+  let companyEmail: string | null = null;
+  if (project?.company_id) {
+    const { data: company } = await supabase
+      .from("companies")
+      .select("notification_email")
+      .eq("id", project.company_id)
+      .single();
+    companyEmail = company?.notification_email ?? null;
+  }
+
+  return { issue, project, companyEmail };
 }
 
 export async function updateIssueStatus(issueId: string, status: IssueStatus) {

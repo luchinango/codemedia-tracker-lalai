@@ -238,96 +238,37 @@ export function FinancialSummary({ projects, exchangeRate, dailyCosts = [], dail
         </div>
       </div>
 
-      {/* Flujo de Caja vs Tiempo — SVG area chart */}
+      {/* Flujo de Caja vs Tiempo — Bar chart */}
       {chartData.length > 1 && (
         <div className="border border-border rounded-xl bg-white dark:bg-muted p-5">
           <h3 className="font-semibold text-foreground mb-1 text-sm">Flujo de Caja vs Tiempo Invertido</h3>
           <p className="text-[10px] text-muted-foreground mb-4">Costos (nómina), Ingresos (pagos) y horas por día</p>
-          <div className="relative w-full h-48 overflow-hidden">
-            <svg viewBox={`0 0 ${chartData.length * 40 + 20} 180`} className="w-full h-full" preserveAspectRatio="none">
-              {/* Grid lines */}
-              {[0, 0.25, 0.5, 0.75, 1].map((pct) => (
-                <line key={pct} x1="0" y1={10 + (1 - pct) * 150} x2={chartData.length * 40 + 20} y2={10 + (1 - pct) * 150} stroke="currentColor" className="text-border" strokeWidth="0.5" strokeDasharray="4" />
-              ))}
-              {/* Income area (green) */}
-              <path
-                d={`M ${chartData.map((d, i) => `${i * 40 + 20},${10 + (1 - d.income_bob / maxMoney) * 150}`).join(" L ")} L ${(chartData.length - 1) * 40 + 20},160 L 20,160 Z`}
-                fill="var(--color-success, #22c55e)"
-                fillOpacity="0.15"
-              />
-              {/* Income line */}
-              <polyline
-                points={chartData.map((d, i) => `${i * 40 + 20},${10 + (1 - d.income_bob / maxMoney) * 150}`).join(" ")}
-                fill="none"
-                stroke="var(--color-success, #22c55e)"
-                strokeWidth="2"
-              />
-              {/* Cost area (red/orange) */}
-              <path
-                d={`M ${chartData.map((d, i) => `${i * 40 + 20},${10 + (1 - d.cost_bob / maxMoney) * 150}`).join(" L ")} L ${(chartData.length - 1) * 40 + 20},160 L 20,160 Z`}
-                fill="var(--color-danger, #ef4444)"
-                fillOpacity="0.1"
-              />
-              {/* Cost line */}
-              <polyline
-                points={chartData.map((d, i) => `${i * 40 + 20},${10 + (1 - d.cost_bob / maxMoney) * 150}`).join(" ")}
-                fill="none"
-                stroke="var(--color-danger, #ef4444)"
-                strokeWidth="2"
-              />
-              {/* Time bars (subtle) */}
+          <div className="overflow-x-auto">
+            <div className="flex items-end gap-1" style={{ minWidth: Math.max(chartData.length * 48, 200), height: 180 }}>
               {chartData.map((d, i) => {
-                const h = (d.minutes / maxMinutes) * 140;
+                const costH = maxMoney > 0 ? (d.cost_bob / maxMoney) * 140 : 0;
+                const incomeH = maxMoney > 0 ? (d.income_bob / maxMoney) * 140 : 0;
+                const timeH = maxMinutes > 0 ? (d.minutes / maxMinutes) * 140 : 0;
                 return (
-                  <rect
-                    key={i}
-                    x={i * 40 + 14}
-                    y={160 - h}
-                    width="12"
-                    height={h}
-                    rx="2"
-                    fill="var(--color-primary, #6366f1)"
-                    fillOpacity="0.2"
-                  />
+                  <div key={i} className="flex flex-col items-center flex-1 min-w-[40px]" title={`${d.date}\nCosto: ${formatBs(d.cost_bob)}\nIngreso: ${formatBs(d.income_bob)}\nTiempo: ${formatDuration(d.minutes)}`}>
+                    <div className="flex items-end gap-0.5 h-[150px]">
+                      <div className="w-3 rounded-t-sm bg-danger/60 transition-all" style={{ height: Math.max(costH, 1) }} />
+                      {d.income_bob > 0 && (
+                        <div className="w-3 rounded-t-sm bg-success/60 transition-all" style={{ height: Math.max(incomeH, 1) }} />
+                      )}
+                      <div className="w-3 rounded-t-sm bg-primary/30 transition-all" style={{ height: Math.max(timeH, 1) }} />
+                    </div>
+                    <span className="text-[8px] text-muted-foreground mt-1 rotate-[-45deg] origin-top-left whitespace-nowrap">
+                      {new Date(d.date + "T12:00:00").toLocaleDateString("es-BO", { day: "2-digit", month: "short" })}
+                    </span>
+                  </div>
                 );
               })}
-              {/* Data points with tooltips */}
-              {chartData.map((d, i) => (
-                <g key={i}>
-                  <circle cx={i * 40 + 20} cy={10 + (1 - d.cost_bob / maxMoney) * 150} r="3" fill="var(--color-danger, #ef4444)">
-                    <title>{`${d.date}\nCosto: ${formatBs(d.cost_bob)}\nTiempo: ${formatDuration(d.minutes)}\nIngreso: ${formatBs(d.income_bob)}`}</title>
-                  </circle>
-                  {d.income_bob > 0 && (
-                    <circle cx={i * 40 + 20} cy={10 + (1 - d.income_bob / maxMoney) * 150} r="3" fill="var(--color-success, #22c55e)">
-                      <title>{`${d.date}\nIngreso: ${formatBs(d.income_bob)}`}</title>
-                    </circle>
-                  )}
-                </g>
-              ))}
-            </svg>
-            {/* X-axis labels */}
-            <div className="flex justify-between px-2 mt-1" style={{ width: "100%" }}>
-              {chartData.length <= 15 ? (
-                chartData.map((d, i) => (
-                  <span key={i} className="text-[9px] text-muted-foreground">
-                    {new Date(d.date + "T12:00:00").toLocaleDateString("es-BO", { day: "2-digit", month: "short" })}
-                  </span>
-                ))
-              ) : (
-                <>
-                  <span className="text-[9px] text-muted-foreground">
-                    {new Date(chartData[0].date + "T12:00:00").toLocaleDateString("es-BO", { day: "2-digit", month: "short" })}
-                  </span>
-                  <span className="text-[9px] text-muted-foreground">
-                    {new Date(chartData[chartData.length - 1].date + "T12:00:00").toLocaleDateString("es-BO", { day: "2-digit", month: "short" })}
-                  </span>
-                </>
-              )}
             </div>
           </div>
-          <div className="flex items-center gap-5 mt-3 text-[10px] text-muted-foreground">
-            <span className="flex items-center gap-1"><span className="w-3 h-2 rounded-sm bg-danger/70 inline-block" /> Costo (nómina)</span>
-            <span className="flex items-center gap-1"><span className="w-3 h-2 rounded-sm bg-success/70 inline-block" /> Ingreso (pagos)</span>
+          <div className="flex items-center gap-5 mt-6 text-[10px] text-muted-foreground">
+            <span className="flex items-center gap-1"><span className="w-3 h-2 rounded-sm bg-danger/60 inline-block" /> Costo (nómina)</span>
+            <span className="flex items-center gap-1"><span className="w-3 h-2 rounded-sm bg-success/60 inline-block" /> Ingreso (pagos)</span>
             <span className="flex items-center gap-1"><span className="w-3 h-2 rounded-sm bg-primary/30 inline-block" /> Tiempo (horas)</span>
           </div>
         </div>
@@ -529,32 +470,40 @@ export function FinancialSummary({ projects, exchangeRate, dailyCosts = [], dail
               const minRate = Math.min(...rates) * 0.998;
               const maxRate = Math.max(...rates) * 1.002;
               const range = maxRate - minRate || 1;
-              const w = rateHistory.length * 30 + 20;
+              const svgW = 600;
+              const svgH = 130;
+              const padX = 15;
+              const padY = 10;
+              const plotW = svgW - padX * 2;
+              const plotH = svgH - padY * 2;
               return (
-                <svg viewBox={`0 0 ${w} 130`} className="w-full h-full" preserveAspectRatio="none">
+                <svg viewBox={`0 0 ${svgW} ${svgH}`} className="w-full h-full">
                   {/* Grid lines */}
                   {[0, 0.5, 1].map((pct) => (
-                    <line key={pct} x1="0" y1={10 + (1 - pct) * 100} x2={w} y2={10 + (1 - pct) * 100} stroke="currentColor" className="text-border" strokeWidth="0.5" strokeDasharray="4" />
+                    <line key={pct} x1={padX} y1={padY + (1 - pct) * plotH} x2={svgW - padX} y2={padY + (1 - pct) * plotH} stroke="currentColor" className="text-border" strokeWidth="0.5" strokeDasharray="4" />
                   ))}
                   {/* Area */}
                   <path
-                    d={`M ${rateHistory.map((r, i) => `${i * 30 + 15},${10 + (1 - (r.rate - minRate) / range) * 100}`).join(" L ")} L ${(rateHistory.length - 1) * 30 + 15},110 L 15,110 Z`}
+                    d={`M ${rateHistory.map((r, i) => `${padX + (i / (rateHistory.length - 1)) * plotW},${padY + (1 - (r.rate - minRate) / range) * plotH}`).join(" L ")} L ${padX + plotW},${padY + plotH} L ${padX},${padY + plotH} Z`}
                     fill="var(--color-warning, #f59e0b)"
                     fillOpacity="0.15"
                   />
                   {/* Line */}
                   <polyline
-                    points={rateHistory.map((r, i) => `${i * 30 + 15},${10 + (1 - (r.rate - minRate) / range) * 100}`).join(" ")}
+                    points={rateHistory.map((r, i) => `${padX + (i / (rateHistory.length - 1)) * plotW},${padY + (1 - (r.rate - minRate) / range) * plotH}`).join(" ")}
                     fill="none"
                     stroke="var(--color-warning, #f59e0b)"
                     strokeWidth="2"
                   />
-                  {/* Data points */}
-                  {rateHistory.map((r, i) => (
-                    <circle key={i} cx={i * 30 + 15} cy={10 + (1 - (r.rate - minRate) / range) * 100} r="3" fill="var(--color-warning, #f59e0b)">
-                      <title>{`${r.date}: Bs${r.rate.toFixed(2)}`}</title>
-                    </circle>
-                  ))}
+                  {/* Data points — show fewer to avoid clutter */}
+                  {rateHistory.filter((_, i) => i === 0 || i === rateHistory.length - 1 || i % Math.max(1, Math.floor(rateHistory.length / 12)) === 0).map((r) => {
+                    const idx = rateHistory.indexOf(r);
+                    return (
+                      <circle key={idx} cx={padX + (idx / (rateHistory.length - 1)) * plotW} cy={padY + (1 - (r.rate - minRate) / range) * plotH} r="3" fill="var(--color-warning, #f59e0b)">
+                        <title>{`${r.date}: Bs${r.rate.toFixed(2)}`}</title>
+                      </circle>
+                    );
+                  })}
                 </svg>
               );
             })()}

@@ -14,27 +14,31 @@ interface NotificationPayload {
   issueId: string;
   issueTitle: string;
   newStatus: IssueStatus;
+  companyEmail?: string | null;
 }
 
 /**
- * Sends a status change notification email to the project's client.
+ * Sends a status change notification email to the company or project client.
  * Uses Resend API. Falls back to console.log if RESEND_API_KEY is not set.
  */
 export async function sendStatusNotification(payload: NotificationPayload) {
-  const { clientEmail, projectId, projectName, issueId, issueTitle, newStatus } = payload;
+  const { clientEmail, projectId, projectName, issueId, issueTitle, newStatus, companyEmail } = payload;
   const statusLabel = STATUS_LABELS[newStatus];
 
-  const subject = `Actualización de CodeMedia: ${projectName}`;
-  const body = `Actualización de CodeMedia: La tarea "${issueTitle}" ha cambiado a ${statusLabel}.`;
+  // Prefer company notification email over project client_email
+  const toEmail = companyEmail || clientEmail;
+
+  const subject = `${projectName}: Actualización de tarea`;
+  const body = `La tarea: "${issueTitle}" ha cambiado a ${statusLabel}.`;
 
   const apiKey = process.env.RESEND_API_KEY;
 
   if (!apiKey) {
     console.log("[Notification] (no RESEND_API_KEY configured)");
-    console.log(`  To: ${clientEmail}`);
+    console.log(`  To: ${toEmail}`);
     console.log(`  Subject: ${subject}`);
     console.log(`  Body: ${body}`);
-    await logNotification(projectId, issueId, clientEmail, body);
+    await logNotification(projectId, issueId, toEmail, body);
     return { success: true, mock: true };
   }
 
@@ -47,7 +51,7 @@ export async function sendStatusNotification(payload: NotificationPayload) {
       },
       body: JSON.stringify({
         from: "CodeMedia Tracker <noreply@codemedia.com>",
-        to: [clientEmail],
+        to: [toEmail],
         subject,
         text: body,
       }),
@@ -56,15 +60,15 @@ export async function sendStatusNotification(payload: NotificationPayload) {
     if (!response.ok) {
       const errorData = await response.json();
       console.error("[Notification] Error sending email:", errorData);
-      await logNotification(projectId, issueId, clientEmail, body);
+      await logNotification(projectId, issueId, toEmail, body);
       return { success: false, error: errorData };
     }
 
-    await logNotification(projectId, issueId, clientEmail, body);
+    await logNotification(projectId, issueId, toEmail, body);
     return { success: true };
   } catch (error) {
     console.error("[Notification] Failed to send:", error);
-    await logNotification(projectId, issueId, clientEmail, body);
+    await logNotification(projectId, issueId, toEmail, body);
     return { success: false, error };
   }
 }

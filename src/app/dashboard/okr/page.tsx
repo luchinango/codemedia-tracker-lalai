@@ -214,41 +214,162 @@ export default async function OKRDashboardPage() {
         <span className="bg-muted px-2 py-1 rounded-full">1 USD = Bs{exchangeRate.toFixed(2)} (Binance P2P)</span>
       </div>
 
-      {/* ── Margin Chart ─────────────────────────── */}
+      {/* ── Charts Grid: Margin + Distribution ────── */}
       {projectMetrics.length > 0 && (
-        <div className="border border-border rounded-xl p-4 bg-white dark:bg-muted mb-8">
-          <h3 className="text-sm font-semibold text-foreground mb-3">Margen por Proyecto (Bs)</h3>
-          <div className="space-y-2">
-            {projectMetrics.map((m) => {
-              const costPct = m.quotedBob > 0 ? Math.min((m.totalRealCostBob / m.quotedBob) * 100, 100) : 0;
-              return (
-                <div key={m.project.id}>
-                  <div className="flex items-center justify-between text-xs mb-0.5">
-                    <span className="text-foreground font-medium truncate max-w-50">
-                      {m.project.name}
-                      <span className="text-muted-foreground ml-1 font-normal">({fmtBs(m.quotedBob)})</span>
-                    </span>
-                    <span className={m.margin >= 0 ? "text-success font-semibold" : "text-danger font-semibold"}>
-                      {fmtBs(m.margin)} ({m.marginPct.toFixed(0)}%)
-                    </span>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-8">
+          {/* Margin by Project — compact */}
+          <div className="border border-border rounded-xl p-4 bg-white dark:bg-muted">
+            <h3 className="text-sm font-semibold text-foreground mb-3">Margen por Proyecto (Bs)</h3>
+            <div className="space-y-2">
+              {projectMetrics.map((m) => {
+                const costPct = m.quotedBob > 0 ? Math.min((m.totalRealCostBob / m.quotedBob) * 100, 100) : 0;
+                return (
+                  <div key={m.project.id}>
+                    <div className="flex items-center justify-between text-xs mb-0.5">
+                      <span className="text-foreground font-medium truncate max-w-[180px]">
+                        {m.project.name}
+                      </span>
+                      <span className={m.margin >= 0 ? "text-success font-semibold" : "text-danger font-semibold"}>
+                        {m.marginPct.toFixed(0)}%
+                      </span>
+                    </div>
+                    <div className="relative h-4 bg-muted rounded-full overflow-hidden">
+                      <div className="absolute inset-y-0 left-0 rounded-full bg-primary/15 w-full" />
+                      <div
+                        className={`absolute inset-y-0 left-0 rounded-full ${m.margin >= 0 ? "bg-success/60" : "bg-danger/60"}`}
+                        style={{ width: `${costPct}%` }}
+                      />
+                    </div>
                   </div>
-                  <div className="relative h-5 bg-muted rounded-full overflow-hidden w-full">
-                    <div className="absolute inset-y-0 left-0 rounded-full bg-primary/15 w-full" />
-                    <div
-                      className={`absolute inset-y-0 left-0 rounded-full ${m.margin >= 0 ? "bg-success/60" : "bg-danger/60"}`}
-                      style={{ width: `${costPct}%` }}
-                    />
+                );
+              })}
+            </div>
+            <div className="flex items-center gap-4 mt-3 text-[10px] text-muted-foreground">
+              <span className="flex items-center gap-1"><span className="inline-block w-3 h-2 rounded bg-primary/15" /> Cotizado</span>
+              <span className="flex items-center gap-1"><span className="inline-block w-3 h-2 rounded bg-success/60" /> Costo</span>
+            </div>
+          </div>
+
+          {/* Donut: Cotizado vs Costo Global */}
+          <div className="border border-border rounded-xl p-4 bg-white dark:bg-muted">
+            <h3 className="text-sm font-semibold text-foreground mb-3">Distribución Global (Bs)</h3>
+            <div className="flex items-center gap-6">
+              <DonutChart
+                segments={[
+                  { value: globalCost, color: "var(--color-danger, #ef4444)", label: "Costo" },
+                  { value: Math.max(globalMargin, 0), color: "var(--color-success, #22c55e)", label: "Margen" },
+                ]}
+                size={120}
+                centerLabel={`${globalMarginPct.toFixed(0)}%`}
+                centerSub="Margen"
+              />
+              <div className="space-y-2 text-xs">
+                <div className="flex items-center gap-2">
+                  <span className="w-3 h-3 rounded-full bg-success/70 shrink-0" />
+                  <div>
+                    <p className="text-foreground font-medium">Margen</p>
+                    <p className="text-muted-foreground">{fmtBs(globalMargin)}</p>
                   </div>
                 </div>
-              );
-            })}
-          </div>
-          <div className="flex items-center gap-4 mt-3 text-[10px] text-muted-foreground">
-            <span className="flex items-center gap-1"><span className="inline-block w-3 h-2 rounded bg-primary/15" /> Cotizado (100%)</span>
-            <span className="flex items-center gap-1"><span className="inline-block w-3 h-2 rounded bg-success/60" /> Costo usado</span>
+                <div className="flex items-center gap-2">
+                  <span className="w-3 h-3 rounded-full bg-danger/70 shrink-0" />
+                  <div>
+                    <p className="text-foreground font-medium">Costo</p>
+                    <p className="text-muted-foreground">{fmtBs(globalCost)}</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="w-3 h-3 rounded-full bg-primary/30 shrink-0" />
+                  <div>
+                    <p className="text-foreground font-medium">Cotizado</p>
+                    <p className="text-muted-foreground">{fmtBs(globalQuoted)}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       )}
+
+      {/* ── Task Status + Precision Charts ─────────── */}
+      {projectMetrics.length > 0 && (() => {
+        const allIssues = projectMetrics.flatMap((m) => m.issueDetails);
+        const todoCount = allIssues.filter((i) => i.status === "todo").length;
+        const progressCount = allIssues.filter((i) => i.status === "in_progress").length;
+        const doneCount = allIssues.filter((i) => i.status === "done").length;
+        const totalTasks = allIssues.length;
+        return (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-8">
+            {/* Tasks distribution donut */}
+            <div className="border border-border rounded-xl p-4 bg-white dark:bg-muted">
+              <h3 className="text-sm font-semibold text-foreground mb-3">Estado de Tareas</h3>
+              <div className="flex items-center gap-6">
+                <DonutChart
+                  segments={[
+                    { value: doneCount, color: "var(--color-success, #22c55e)", label: "Terminadas" },
+                    { value: progressCount, color: "var(--color-warning, #f59e0b)", label: "En Progreso" },
+                    { value: todoCount, color: "var(--color-muted-foreground, #94a3b8)", label: "Por Hacer" },
+                  ]}
+                  size={120}
+                  centerLabel={`${totalTasks}`}
+                  centerSub="Total"
+                />
+                <div className="space-y-2 text-xs">
+                  <div className="flex items-center gap-2">
+                    <span className="w-3 h-3 rounded-full bg-success/70 shrink-0" />
+                    <span className="text-foreground">{doneCount} Terminadas</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="w-3 h-3 rounded-full bg-warning/70 shrink-0" />
+                    <span className="text-foreground">{progressCount} En Progreso</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="w-3 h-3 rounded-full bg-muted-foreground/40 shrink-0" />
+                    <span className="text-foreground">{todoCount} Por Hacer</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Precision by project — horizontal bars */}
+            <div className="border border-border rounded-xl p-4 bg-white dark:bg-muted">
+              <h3 className="text-sm font-semibold text-foreground mb-3">Precisión de Estimación por Proyecto</h3>
+              <div className="space-y-2">
+                {projectMetrics.filter((m) => m.precisionPct !== null).map((m) => (
+                  <div key={m.project.id}>
+                    <div className="flex items-center justify-between text-xs mb-0.5">
+                      <span className="text-foreground font-medium truncate max-w-[180px]">{m.project.name}</span>
+                      <span className={
+                        m.precisionPct! >= 80 && m.precisionPct! <= 120
+                          ? "text-success font-semibold"
+                          : "text-warning font-semibold"
+                      }>
+                        {m.precisionPct!.toFixed(0)}%
+                      </span>
+                    </div>
+                    <div className="relative h-4 bg-muted rounded-full overflow-hidden">
+                      <div
+                        className={`absolute inset-y-0 left-0 rounded-full ${
+                          m.precisionPct! >= 80 && m.precisionPct! <= 120
+                            ? "bg-success/60"
+                            : "bg-warning/60"
+                        }`}
+                        style={{ width: `${Math.min(m.precisionPct!, 100)}%` }}
+                      />
+                      {/* Target zone marker at 100% */}
+                      <div className="absolute inset-y-0 left-[100%] w-px bg-foreground/30" style={{ left: '50%' }} />
+                    </div>
+                  </div>
+                ))}
+                {projectMetrics.every((m) => m.precisionPct === null) && (
+                  <p className="text-xs text-muted-foreground text-center py-4">Configure horas estimadas en las tareas</p>
+                )}
+              </div>
+              <p className="text-[10px] text-muted-foreground mt-3">100% = estimación perfecta. Línea central = meta</p>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* ── Per-Project Breakdown ─────────────────── */}
       <h2 className="text-lg font-semibold text-foreground mb-4">Por Proyecto</h2>
@@ -354,26 +475,36 @@ export default async function OKRDashboardPage() {
             <thead>
               <tr className="bg-muted text-muted-foreground text-xs">
                 <th className="text-left py-2 px-3">Fecha</th>
+                <th className="text-left py-2 px-3">Proyecto</th>
                 <th className="text-left py-2 px-3">Email</th>
                 <th className="text-left py-2 px-3">Evento</th>
                 <th className="text-left py-2 px-3">Mensaje</th>
               </tr>
             </thead>
             <tbody>
-              {notifications.map((n) => (
-                <tr key={n.id} className="border-t border-border/50">
-                  <td className="py-2 px-3 text-xs text-muted-foreground whitespace-nowrap">
-                    {new Date(n.created_at).toLocaleString("es-BO", { dateStyle: "short", timeStyle: "short" })}
-                  </td>
-                  <td className="py-2 px-3 text-xs text-foreground">{n.client_email}</td>
-                  <td className="py-2 px-3">
-                    <span className="text-xs px-2 py-0.5 rounded-full bg-primary/10 text-primary font-medium">
-                      {n.event_type}
-                    </span>
-                  </td>
-                  <td className="py-2 px-3 text-xs text-muted-foreground">{n.message}</td>
-                </tr>
-              ))}
+              {notifications.map((n) => {
+                // Clean up message: remove "Actualización de CodeMedia: " prefix
+                const cleanMsg = n.message.replace(/^Actualización de CodeMedia:\s*/i, "");
+                // Find project name from metrics
+                const projName = allProjects.find(p => p.id === n.project_id)?.name;
+                return (
+                  <tr key={n.id} className="border-t border-border/50">
+                    <td className="py-2 px-3 text-xs text-muted-foreground whitespace-nowrap">
+                      {new Date(n.created_at).toLocaleString("es-BO", { dateStyle: "short", timeStyle: "short" })}
+                    </td>
+                    <td className="py-2 px-3 text-xs text-foreground font-medium">
+                      {projName ?? "—"}
+                    </td>
+                    <td className="py-2 px-3 text-xs text-foreground">{n.client_email}</td>
+                    <td className="py-2 px-3">
+                      <span className="text-xs px-2 py-0.5 rounded-full bg-primary/10 text-primary font-medium">
+                        {n.event_type}
+                      </span>
+                    </td>
+                    <td className="py-2 px-3 text-xs text-muted-foreground">{cleanMsg}</td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
@@ -462,4 +593,49 @@ function getPrecisionLabel(pct: number | null): string {
   if (pct >= 80 && pct <= 120) return "Buena precisión de estimación";
   if (pct > 120) return "Se sobreestimó el esfuerzo — revisar estimaciones";
   return "Se subestimó el esfuerzo — revisar estimaciones";
+}
+
+function DonutChart({
+  segments, size, centerLabel, centerSub,
+}: {
+  segments: { value: number; color: string; label: string }[];
+  size: number;
+  centerLabel: string;
+  centerSub: string;
+}) {
+  const total = segments.reduce((s, seg) => s + seg.value, 0);
+  if (total === 0) {
+    return (
+      <svg width={size} height={size} viewBox="0 0 100 100">
+        <circle cx="50" cy="50" r="35" fill="none" stroke="currentColor" className="text-border" strokeWidth="12" />
+        <text x="50" y="48" textAnchor="middle" className="fill-foreground text-[14px] font-bold">0</text>
+        <text x="50" y="60" textAnchor="middle" className="fill-muted-foreground text-[8px]">{centerSub}</text>
+      </svg>
+    );
+  }
+  let accumulated = 0;
+  const arcs = segments.filter(s => s.value > 0).map((seg) => {
+    const fraction = seg.value / total;
+    const startAngle = accumulated * 2 * Math.PI - Math.PI / 2;
+    accumulated += fraction;
+    const endAngle = accumulated * 2 * Math.PI - Math.PI / 2;
+    const largeArc = fraction > 0.5 ? 1 : 0;
+    const r = 35;
+    const x1 = 50 + r * Math.cos(startAngle);
+    const y1 = 50 + r * Math.sin(startAngle);
+    const x2 = 50 + r * Math.cos(endAngle - 0.001);
+    const y2 = 50 + r * Math.sin(endAngle - 0.001);
+    return { ...seg, d: `M ${x1} ${y1} A ${r} ${r} 0 ${largeArc} 1 ${x2} ${y2}` };
+  });
+  return (
+    <svg width={size} height={size} viewBox="0 0 100 100">
+      {arcs.map((arc, i) => (
+        <path key={i} d={arc.d} fill="none" stroke={arc.color} strokeWidth="12" strokeLinecap="round">
+          <title>{`${arc.label}: ${arc.value}`}</title>
+        </path>
+      ))}
+      <text x="50" y="48" textAnchor="middle" className="fill-foreground text-[14px] font-bold">{centerLabel}</text>
+      <text x="50" y="60" textAnchor="middle" className="fill-muted-foreground text-[8px]">{centerSub}</text>
+    </svg>
+  );
 }
