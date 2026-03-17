@@ -133,9 +133,11 @@ export function ProjectCard({ project, companyName, responsibleName, taskCounts,
           <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${
             project.billing_type === "hourly"
               ? "bg-warning/10 text-warning"
+              : project.billing_type === "hour_package"
+              ? "bg-primary/10 text-primary"
               : "bg-muted text-muted-foreground"
           }`}>
-            {project.billing_type === "hourly" ? "Por Horas" : "Por Proyecto"}
+            {project.billing_type === "hourly" ? "Por Horas" : project.billing_type === "hour_package" ? "Bolsa de Horas" : "Por Proyecto"}
           </span>
         )}
       </div>

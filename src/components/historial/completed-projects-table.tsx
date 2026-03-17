@@ -1,8 +1,9 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { FolderCheck, Download, Search, X, ChevronDown } from "lucide-react";
+import { FolderCheck, Download, Search, X, ChevronDown, ExternalLink } from "lucide-react";
 import { downloadCSVFile, downloadXLSFile, downloadPDFFile } from "@/lib/download-utils";
+import Link from "next/link";
 
 interface ProjectRow {
   id: string;
@@ -105,7 +106,7 @@ export function CompletedProjectsTable({ rows, companies, users }: Props) {
         r.projectCode ?? "",
         r.companyName ?? "",
         r.responsibleName ?? "",
-        r.billingType === "hourly" ? "Por Horas" : "Por Proyecto",
+        r.billingType === "hourly" ? "Por Horas" : r.billingType === "hour_package" ? "Bolsa de Horas" : "Por Proyecto",
         r.currency,
         r.quotedPrice.toFixed(2),
         r.totalCost.toFixed(2),
@@ -269,12 +270,13 @@ export function CompletedProjectsTable({ rows, companies, users }: Props) {
                 <th className="text-right px-4 py-3 font-medium">Margen</th>
                 <th className="text-center px-4 py-3 font-medium">Tareas</th>
                 <th className="text-right px-4 py-3 font-medium">Tiempo</th>
+                <th className="text-center px-4 py-3 font-medium">Acciones</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
               {filtered.length === 0 ? (
                 <tr>
-                  <td colSpan={12} className="text-center py-12 text-muted-foreground">
+                  <td colSpan={13} className="text-center py-12 text-muted-foreground">
                     No hay proyectos completados{hasFilters ? " con estos filtros" : ""}.
                   </td>
                 </tr>
@@ -299,9 +301,11 @@ export function CompletedProjectsTable({ rows, companies, users }: Props) {
                         <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${
                           r.billingType === "hourly"
                             ? "bg-warning/10 text-warning"
+                            : r.billingType === "hour_package"
+                            ? "bg-primary/10 text-primary"
                             : "bg-muted text-muted-foreground"
                         }`}>
-                          {r.billingType === "hourly" ? "Por Horas" : "Por Proyecto"}
+                          {r.billingType === "hourly" ? "Por Horas" : r.billingType === "hour_package" ? "Bolsa de Horas" : "Por Proyecto"}
                         </span>
                       </td>
                       <td className="px-4 py-3 text-muted-foreground whitespace-nowrap">{formatDate(r.createdAt)}</td>
@@ -314,6 +318,16 @@ export function CompletedProjectsTable({ rows, companies, users }: Props) {
                       </td>
                       <td className="px-4 py-3 text-center text-muted-foreground">{r.doneTasks}/{r.totalTasks}</td>
                       <td className="px-4 py-3 text-right text-foreground whitespace-nowrap">{formatDuration(r.totalMinutes)}</td>
+                      <td className="px-4 py-3 text-center">
+                        <Link
+                          href={`/projects/${r.id}`}
+                          className="inline-flex items-center gap-1 text-xs text-primary hover:underline font-medium"
+                          title="Ver / Editar proyecto"
+                        >
+                          <ExternalLink size={12} />
+                          Ver
+                        </Link>
+                      </td>
                     </tr>
                   );
                 })

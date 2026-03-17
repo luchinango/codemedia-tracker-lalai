@@ -1,12 +1,20 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { CheckCircle2, Download, Search, X, ChevronDown } from "lucide-react";
+import { CheckCircle2, Download, Search, X, ChevronDown, ChevronRight, Clock } from "lucide-react";
 import { downloadCSVFile, downloadXLSFile, downloadPDFFile } from "@/lib/download-utils";
+
+interface TimeLogDetail {
+  userName: string;
+  durationMinutes: number;
+  startTime: string;
+  endTime: string;
+}
 
 interface TaskRow {
   id: string;
   title: string;
+  description?: string | null;
   issueCode: string | null;
   projectName: string;
   projectCode: string | null;
@@ -15,6 +23,7 @@ interface TaskRow {
   createdAt: string;
   completedAt: string;
   totalMinutes: number;
+  timeLogs?: TimeLogDetail[];
 }
 
 interface FilterProject {
@@ -70,6 +79,7 @@ export function CompletedTasksTable({ rows, projects, users }: Props) {
   const [dateTo, setDateTo] = useState("");
   const [downloadOpen, setDownloadOpen] = useState(false);
   const [quickDays, setQuickDays] = useState<number | null>(null);
+  const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
 
   const filtered = useMemo(() => {
     return rows.filter((r) => {
@@ -261,39 +271,95 @@ export function CompletedTasksTable({ rows, projects, users }: Props) {
                   </td>
                 </tr>
               ) : (
-                filtered.map((r) => (
-                  <tr key={r.id} className="hover:bg-muted/50 transition-colors">
-                    <td className="px-4 py-3 font-mono text-xs text-primary font-bold whitespace-nowrap">{r.issueCode ?? "—"}</td>
-                    <td className="px-4 py-3 font-medium text-foreground">{r.title}</td>
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-1.5">
-                        {r.projectCode && (
-                          <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-primary/10 text-primary font-bold">
-                            {r.projectCode}
+                filtered.map((r) => {
+                  const isExpanded = expandedRows.has(r.id);
+                  const hasDetails = r.description || (r.timeLogs && r.timeLogs.length > 0);
+                  return (
+                    <>
+                      <tr
+                        key={r.id}
+                        className={`hover:bg-muted/50 transition-colors ${hasDetails ? "cursor-pointer" : ""}`}
+                        onClick={() => {
+                          if (!hasDetails) return;
+                          setExpandedRows((prev) => {
+                            const next = new Set(prev);
+                            if (next.has(r.id)) next.delete(r.id);
+                            else next.add(r.id);
+                            return next;
+                          });
+                        }}
+                      >
+                        <td className="px-4 py-3 font-mono text-xs text-primary font-bold whitespace-nowrap">
+                          <span className="inline-flex items-center gap-1">
+                            {hasDetails && (isExpanded ? <ChevronDown size={12} /> : <ChevronRight size={12} />)}
+                            {r.issueCode ?? "—"}
                           </span>
-                        )}
-                        <span className="text-foreground">{r.projectName}</span>
-                      </div>
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="flex flex-wrap gap-1">
-                        {r.assignedUsers.length > 0 ? (
-                          r.assignedUsers.map((name, i) => (
-                            <span key={i} className="text-[10px] px-1.5 py-0.5 rounded-full bg-primary/10 text-primary font-medium">
-                              {name}
-                            </span>
-                          ))
-                        ) : (
-                          <span className="text-muted-foreground">—</span>
-                        )}
-                      </div>
-                    </td>
-                    <td className="px-4 py-3 text-muted-foreground whitespace-nowrap">{formatDate(r.createdAt)}</td>
-                    <td className="px-4 py-3 text-muted-foreground whitespace-nowrap">{formatDate(r.completedAt)}</td>
-                    <td className="px-4 py-3 text-muted-foreground whitespace-nowrap">{durationBetween(r.createdAt, r.completedAt)}</td>
-                    <td className="px-4 py-3 text-right font-medium text-foreground whitespace-nowrap">{formatDuration(r.totalMinutes)}</td>
-                  </tr>
-                ))
+                        </td>
+                        <td className="px-4 py-3 font-medium text-foreground">{r.title}</td>
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-1.5">
+                            {r.projectCode && (
+                              <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-primary/10 text-primary font-bold">
+                                {r.projectCode}
+                              </span>
+                            )}
+                            <span className="text-foreground">{r.projectName}</span>
+                          </div>
+                        </td>
+                        <td className="px-4 py-3">
+                          <div className="flex flex-wrap gap-1">
+                            {r.assignedUsers.length > 0 ? (
+                              r.assignedUsers.map((name, i) => (
+                                <span key={i} className="text-[10px] px-1.5 py-0.5 rounded-full bg-primary/10 text-primary font-medium">
+                                  {name}
+                                </span>
+                              ))
+                            ) : (
+                              <span className="text-muted-foreground">—</span>
+                            )}
+                          </div>
+                        </td>
+                        <td className="px-4 py-3 text-muted-foreground whitespace-nowrap">{formatDate(r.createdAt)}</td>
+                        <td className="px-4 py-3 text-muted-foreground whitespace-nowrap">{formatDate(r.completedAt)}</td>
+                        <td className="px-4 py-3 text-muted-foreground whitespace-nowrap">{durationBetween(r.createdAt, r.completedAt)}</td>
+                        <td className="px-4 py-3 text-right font-medium text-foreground whitespace-nowrap">{formatDuration(r.totalMinutes)}</td>
+                      </tr>
+                      {isExpanded && hasDetails && (
+                        <tr key={`${r.id}-detail`} className="bg-muted/30">
+                          <td colSpan={8} className="px-6 py-3">
+                            <div className="space-y-2">
+                              {r.description && (
+                                <p className="text-xs text-muted-foreground">
+                                  <strong className="text-foreground">Descripción:</strong> {r.description}
+                                </p>
+                              )}
+                              {r.timeLogs && r.timeLogs.length > 0 && (
+                                <div>
+                                  <p className="text-xs font-medium text-foreground mb-1 flex items-center gap-1">
+                                    <Clock size={12} /> Registros de tiempo:
+                                  </p>
+                                  <div className="grid gap-1">
+                                    {r.timeLogs.map((log, i) => (
+                                      <div key={i} className="flex items-center gap-3 text-xs text-muted-foreground">
+                                        <span className="font-medium text-foreground w-24 truncate">{log.userName}</span>
+                                        <span>{formatDuration(log.durationMinutes)}</span>
+                                        <span className="text-[10px]">
+                                          {new Date(log.startTime).toLocaleString("es-BO", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}
+                                          {" → "}
+                                          {new Date(log.endTime).toLocaleString("es-BO", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}
+                                        </span>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                    </>
+                  );
+                })
               )}
             </tbody>
           </table>

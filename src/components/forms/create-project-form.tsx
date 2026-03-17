@@ -24,6 +24,7 @@ export function CreateProjectForm({ companies, devs }: CreateProjectFormProps) {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [selectedCollaborators, setSelectedCollaborators] = useState<string[]>([]);
+  const [billingType, setBillingType] = useState("fixed");
 
   function toggleCollaborator(userId: string) {
     setSelectedCollaborators((prev) =>
@@ -181,13 +182,34 @@ export function CreateProjectForm({ companies, devs }: CreateProjectFormProps) {
           </label>
           <select
             name="billing_type"
-            defaultValue="fixed"
+            value={billingType}
+            onChange={(e) => setBillingType(e.target.value)}
             className="w-full px-3 py-2 rounded-lg border border-border bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
           >
             <option value="fixed">Por Proyecto (precio fijo)</option>
             <option value="hourly">Por Horas</option>
+            <option value="hour_package">Bolsa de Horas (prepago)</option>
           </select>
         </div>
+
+        {billingType === "hour_package" && (
+          <div>
+            <label className="block text-xs font-medium text-muted-foreground mb-1">
+              Horas Incluidas en la Bolsa
+            </label>
+            <input
+              name="package_hours"
+              type="number"
+              step="0.5"
+              min="0"
+              placeholder="40"
+              className="w-full px-3 py-2 rounded-lg border border-border bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
+            />
+            <p className="text-[10px] text-muted-foreground mt-1">
+              Horas prepagadas. El precio cotizado es el costo total de la bolsa.
+            </p>
+          </div>
+        )}
 
         <div>
           <label className="block text-xs font-medium text-muted-foreground mb-1">

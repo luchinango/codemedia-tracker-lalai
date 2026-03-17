@@ -102,13 +102,14 @@ export function IssueCard({ issue, users }: IssueCardProps) {
     0
   );
 
-  let elapsed = "";
+  let elapsedAccumulated = "";
   if (openLog) {
     const startSeconds = Math.floor(
       new Date(openLog.start_time).getTime() / 1_000
     );
-    const diffSec = Math.max(0, nowSeconds - startSeconds);
-    elapsed = formatHHMMSS(diffSec);
+    const currentSessionSec = Math.max(0, nowSeconds - startSeconds);
+    const accumulatedSec = totalMinutes * 60 + currentSessionSec;
+    elapsedAccumulated = formatHHMMSS(accumulatedSec);
   }
 
   // The dev options: assigned devs for this issue, fallback to all devs
@@ -275,9 +276,9 @@ export function IssueCard({ issue, users }: IssueCardProps) {
       </div>
 
       {/* Time info */}
-      <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
-        <Clock size={16} />
-        <span className="font-medium">Total: {formatDuration(totalMinutes)}</span>
+      <div className="flex items-center gap-2 text-muted-foreground mb-1">
+        <Clock size={18} />
+        <span className="text-base font-semibold">Total: {formatDuration(totalMinutes)}</span>
         {closedLogs.length > 0 && (
           <button
             onClick={() => setShowEditLogs(!showEditLogs)}
@@ -287,9 +288,9 @@ export function IssueCard({ issue, users }: IssueCardProps) {
             <Pencil size={12} />
           </button>
         )}
-        {elapsed && (
-          <span className="ml-auto text-base text-warning font-bold animate-pulse">
-            ⏱ {elapsed}
+        {elapsedAccumulated && (
+          <span className="ml-auto text-lg text-warning font-bold animate-pulse">
+            ⏱ {elapsedAccumulated}
           </span>
         )}
       </div>
@@ -371,7 +372,7 @@ export function IssueCard({ issue, users }: IssueCardProps) {
             className="flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg bg-success text-white hover:opacity-90 transition disabled:opacity-50"
           >
             <Play size={12} />
-            Iniciar
+            {issue.time_logs.length > 0 ? "Reanudar" : "Iniciar"}
           </button>
         )}
 

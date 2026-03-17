@@ -12,6 +12,7 @@ export async function createProject(formData: FormData) {
   const billingType = (formData.get("billing_type") as string) || "fixed";
   const responsibleId = (formData.get("responsible_id") as string) || null;
   const collaboratorIds = formData.getAll("collaborator_ids") as string[];
+  const packageHours = parseFloat(formData.get("package_hours") as string) || 0;
 
   if (!name) {
     return { error: "El nombre del proyecto es requerido" };
@@ -40,6 +41,9 @@ export async function createProject(formData: FormData) {
   };
   if (responsibleId) {
     insertPayload.responsible_id = responsibleId;
+  }
+  if (billingType === "hour_package" && packageHours > 0) {
+    insertPayload.package_hours = packageHours;
   }
 
   const { data: project, error } = await supabase.from("projects").insert(insertPayload).select("id").single();

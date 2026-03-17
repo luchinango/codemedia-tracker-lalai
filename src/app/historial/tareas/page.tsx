@@ -11,7 +11,7 @@ export default async function CompletedTasksPage() {
     .from("issues")
     .select(
       `*, projects:project_id (name, project_code),
-       time_logs (duration_minutes, user_id, users:user_id (name))`
+       time_logs (duration_minutes, user_id, start_time, end_time, users:user_id (name))`
     )
     .eq("status", "done")
     .order("created_at", { ascending: false });
@@ -43,7 +43,7 @@ export default async function CompletedTasksPage() {
     .order("name");
 
   type ProjectJoin = { name: string; project_code: string | null };
-  type TimeLogJoin = { duration_minutes: number | null; user_id: string; users: { name: string } | null };
+  type TimeLogJoin = { duration_minutes: number | null; user_id: string; start_time: string; end_time: string | null; users: { name: string } | null };
 
   const rows = (issues ?? []).map((issue) => {
     const proj = (issue as unknown as { projects: ProjectJoin | null }).projects;
@@ -54,6 +54,7 @@ export default async function CompletedTasksPage() {
     return {
       id: issue.id,
       title: issue.title,
+      description: issue.description as string | null,
       issueCode: (issue as Record<string, unknown>).issue_code as string | null,
       projectName: proj?.name ?? "—",
       projectCode: proj?.project_code ?? null,
@@ -62,6 +63,12 @@ export default async function CompletedTasksPage() {
       createdAt: issue.created_at,
       completedAt: issue.completed_at ?? issue.created_at,
       totalMinutes,
+      timeLogs: logs.filter(l => l.end_time).map(l => ({
+        userName: l.users?.name ?? "Desconocido",
+        durationMinutes: l.duration_minutes ?? 0,
+        startTime: l.start_time,
+        endTime: l.end_time!,
+      })),
     };
   });
 
