@@ -13,6 +13,7 @@ interface ActiveTimer {
   issue_title: string;
   project_name: string;
   user_name: string;
+  accumulated_seconds: number; // total seconds from previous closed sessions
 }
 
 function subscribeToTick(callback: () => void) {
@@ -60,13 +61,25 @@ export function GlobalTimer() {
       const issueIds = [...new Set(logs.map((l) => l.issue_id))];
       const userIds = [...new Set(logs.map((l) => l.user_id))];
 
-      const [{ data: issues }, { data: users }] = await Promise.all([
+      const [{ data: issues }, { data: users }, { data: closedLogs }] = await Promise.all([
         supabase
           .from("issues")
           .select("id, title, project_id, projects:project_id(name)")
           .in("id", issueIds),
         supabase.from("users").select("id, name").in("id", userIds),
+        // Fetch closed time_logs to compute accumulated time per issue
+        supabase
+          .from("time_logs")
+          .select("issue_id, duration_minutes")
+          .in("issue_id", issueIds)
+          .not("end_time", "is", null),
       ]);
+
+      // Sum closed duration per issue
+      const accumulatedMap = new Map<string, number>();
+      for (const cl of closedLogs ?? []) {
+        accumulatedMap.set(cl.issue_id, (accumulatedMap.get(cl.issue_id) ?? 0) + (cl.duration_minutes ?? 0));
+      }
 
       const issueMap = new Map(
         (issues ?? []).map((i) => [
@@ -88,6 +101,7 @@ export function GlobalTimer() {
           issue_title: issueMap.get(l.issue_id)?.title ?? "—",
           project_name: issueMap.get(l.issue_id)?.project_name ?? "—",
           user_name: userMap.get(l.user_id) ?? "—",
+          accumulated_seconds: (accumulatedMap.get(l.issue_id) ?? 0) * 60,
         }))
       );
     }
@@ -123,7 +137,7 @@ export function GlobalTimer() {
           <Clock size={18} />
           <span className="font-mono text-lg font-bold">
             {formatHHMMSS(
-              Math.max(
+              timers[0].accumulated_seconds + Math.max(
                 0,
                 nowSec - Math.floor(new Date(timers[0].start_time).getTime() / 1000)
               )
@@ -163,7 +177,8 @@ export function GlobalTimer() {
       <div className="max-h-64 overflow-y-auto divide-y divide-border">
         {timers.map((timer) => {
           const startSec = Math.floor(new Date(timer.start_time).getTime() / 1000);
-          const diff = Math.max(0, nowSec - startSec);
+          const currentSession = Math.max(0, nowSec - startSec);
+          const totalElapsed = timer.accumulated_seconds + currentSession;
           return (
             <div key={timer.id} className="px-4 py-3">
               <div className="flex items-start justify-between gap-2">
@@ -178,7 +193,7 @@ export function GlobalTimer() {
                 </div>
                 <div className="text-right shrink-0">
                   <p className="font-mono text-2xl font-bold text-primary tabular-nums">
-                    {formatHHMMSS(diff)}
+                    {formatHHMMSS(totalElapsed)}
                   </p>
                 </div>
               </div>

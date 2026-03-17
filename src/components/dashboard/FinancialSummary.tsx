@@ -243,33 +243,56 @@ export function FinancialSummary({ projects, exchangeRate, dailyCosts = [], dail
         <div className="border border-border rounded-xl bg-white dark:bg-muted p-5">
           <h3 className="font-semibold text-foreground mb-1 text-sm">Flujo de Caja vs Tiempo Invertido</h3>
           <p className="text-[10px] text-muted-foreground mb-4">Costos (nómina), Ingresos (pagos) y horas por día</p>
-          <div className="overflow-x-auto">
-            <div className="flex items-end gap-1" style={{ minWidth: Math.max(chartData.length * 48, 200), height: 180 }}>
-              {chartData.map((d, i) => {
-                const costH = maxMoney > 0 ? (d.cost_bob / maxMoney) * 140 : 0;
-                const incomeH = maxMoney > 0 ? (d.income_bob / maxMoney) * 140 : 0;
-                const timeH = maxMinutes > 0 ? (d.minutes / maxMinutes) * 140 : 0;
-                return (
-                  <div key={i} className="flex flex-col items-center flex-1 min-w-[40px]" title={`${d.date}\nCosto: ${formatBs(d.cost_bob)}\nIngreso: ${formatBs(d.income_bob)}\nTiempo: ${formatDuration(d.minutes)}`}>
-                    <div className="flex items-end gap-0.5 h-[150px]">
-                      <div className="w-3 rounded-t-sm bg-danger/60 transition-all" style={{ height: Math.max(costH, 1) }} />
-                      {d.income_bob > 0 && (
-                        <div className="w-3 rounded-t-sm bg-success/60 transition-all" style={{ height: Math.max(incomeH, 1) }} />
-                      )}
-                      <div className="w-3 rounded-t-sm bg-primary/30 transition-all" style={{ height: Math.max(timeH, 1) }} />
-                    </div>
-                    <span className="text-[8px] text-muted-foreground mt-1 rotate-[-45deg] origin-top-left whitespace-nowrap">
-                      {new Date(d.date + "T12:00:00").toLocaleDateString("es-BO", { day: "2-digit", month: "short" })}
-                    </span>
-                  </div>
-                );
-              })}
+
+          {/* Y-axis reference + bars */}
+          <div className="flex gap-2">
+            {/* Y scale labels */}
+            <div className="flex flex-col justify-between text-[9px] text-muted-foreground pr-1 py-1 shrink-0 w-14 text-right">
+              <span>{formatBs(maxMoney)}</span>
+              <span>{formatBs(maxMoney / 2)}</span>
+              <span>Bs0</span>
+            </div>
+
+            {/* Chart area */}
+            <div className="flex-1 relative">
+              {/* Grid lines */}
+              <div className="absolute inset-0 flex flex-col justify-between pointer-events-none">
+                <div className="border-b border-border/40 border-dashed" />
+                <div className="border-b border-border/40 border-dashed" />
+                <div className="border-b border-border/60" />
+              </div>
+
+              <div className="overflow-x-auto">
+                <div className="flex items-end gap-2" style={{ minWidth: Math.max(chartData.length * 56, 250), height: 200 }}>
+                  {chartData.map((d, i) => {
+                    const costH = maxMoney > 0 ? (d.cost_bob / maxMoney) * 180 : 0;
+                    const incomeH = maxMoney > 0 ? (d.income_bob / maxMoney) * 180 : 0;
+                    const timeH = maxMinutes > 0 ? (d.minutes / maxMinutes) * 180 : 0;
+                    const label = new Date(d.date + "T12:00:00").toLocaleDateString("es-BO", { day: "2-digit", month: "short" });
+                    return (
+                      <div key={i} className="flex flex-col items-center flex-1 min-w-11 group" title={`${d.date}\nCosto: ${formatBs(d.cost_bob)}\nIngreso: ${formatBs(d.income_bob)}\nTiempo: ${formatDuration(d.minutes)}`}>
+                        <div className="flex items-end gap-px" style={{ height: 180 }}>
+                          <div className="w-3.5 rounded-t bg-danger/70 group-hover:bg-danger transition-all" style={{ height: Math.max(costH, 2) }} />
+                          {d.income_bob > 0 && (
+                            <div className="w-3.5 rounded-t bg-success/70 group-hover:bg-success transition-all" style={{ height: Math.max(incomeH, 2) }} />
+                          )}
+                          <div className="w-3.5 rounded-t bg-primary/40 group-hover:bg-primary/70 transition-all" style={{ height: Math.max(timeH, 2) }} />
+                        </div>
+                        <span className="text-[8px] text-muted-foreground mt-1.5 whitespace-nowrap leading-none">
+                          {label}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
             </div>
           </div>
-          <div className="flex items-center gap-5 mt-6 text-[10px] text-muted-foreground">
-            <span className="flex items-center gap-1"><span className="w-3 h-2 rounded-sm bg-danger/60 inline-block" /> Costo (nómina)</span>
-            <span className="flex items-center gap-1"><span className="w-3 h-2 rounded-sm bg-success/60 inline-block" /> Ingreso (pagos)</span>
-            <span className="flex items-center gap-1"><span className="w-3 h-2 rounded-sm bg-primary/30 inline-block" /> Tiempo (horas)</span>
+
+          <div className="flex items-center gap-5 mt-4 text-[10px] text-muted-foreground">
+            <span className="flex items-center gap-1"><span className="w-3 h-2 rounded-sm bg-danger/70 inline-block" /> Costo (nómina)</span>
+            <span className="flex items-center gap-1"><span className="w-3 h-2 rounded-sm bg-success/70 inline-block" /> Ingreso (pagos)</span>
+            <span className="flex items-center gap-1"><span className="w-3 h-2 rounded-sm bg-primary/40 inline-block" /> Tiempo (horas)</span>
           </div>
         </div>
       )}

@@ -226,7 +226,7 @@ export default async function OKRDashboardPage() {
                 return (
                   <div key={m.project.id}>
                     <div className="flex items-center justify-between text-xs mb-0.5">
-                      <span className="text-foreground font-medium truncate max-w-[180px]">
+                      <span className="text-foreground font-medium truncate max-w-45">
                         {m.project.name}
                       </span>
                       <span className={m.margin >= 0 ? "text-success font-semibold" : "text-danger font-semibold"}>
@@ -338,7 +338,7 @@ export default async function OKRDashboardPage() {
                 {projectMetrics.filter((m) => m.precisionPct !== null).map((m) => (
                   <div key={m.project.id}>
                     <div className="flex items-center justify-between text-xs mb-0.5">
-                      <span className="text-foreground font-medium truncate max-w-[180px]">{m.project.name}</span>
+                      <span className="text-foreground font-medium truncate max-w-45">{m.project.name}</span>
                       <span className={
                         m.precisionPct! >= 80 && m.precisionPct! <= 120
                           ? "text-success font-semibold"
@@ -357,7 +357,7 @@ export default async function OKRDashboardPage() {
                         style={{ width: `${Math.min(m.precisionPct!, 100)}%` }}
                       />
                       {/* Target zone marker at 100% */}
-                      <div className="absolute inset-y-0 left-[100%] w-px bg-foreground/30" style={{ left: '50%' }} />
+                      <div className="absolute inset-y-0 left-1/2 w-px bg-foreground/30" />
                     </div>
                   </div>
                 ))}
@@ -613,12 +613,12 @@ function DonutChart({
       </svg>
     );
   }
-  let accumulated = 0;
-  const arcs = segments.filter(s => s.value > 0).map((seg) => {
+  const filtered = segments.filter(s => s.value > 0);
+  const arcs = filtered.map((seg, i) => {
     const fraction = seg.value / total;
-    const startAngle = accumulated * 2 * Math.PI - Math.PI / 2;
-    accumulated += fraction;
-    const endAngle = accumulated * 2 * Math.PI - Math.PI / 2;
+    const offset = filtered.slice(0, i).reduce((s, prev) => s + prev.value / total, 0);
+    const startAngle = offset * 2 * Math.PI - Math.PI / 2;
+    const endAngle = (offset + fraction) * 2 * Math.PI - Math.PI / 2;
     const largeArc = fraction > 0.5 ? 1 : 0;
     const r = 35;
     const x1 = 50 + r * Math.cos(startAngle);
